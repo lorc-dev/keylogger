@@ -22,13 +22,14 @@ TARGET := $(BIN_PATH)/$(TARGET_NAME)
 
 
 # src files & obj files
-SRC := $(foreach x, $(SRC_PATH), $(wildcard $(addprefix $(x)/*,.c .s)))
-OBJ := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
+SRC_C := $(shell cd src && find . -name "*.c")
+SRC_S := $(shell cd src && find . -name "*.s")
+OBJ_C := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(basename $(SRC_C))))
+OBJ_S := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(basename $(SRC_S))))
+OBJ := $(foreach x, $(notdir $(OBJ_C) $(OBJ_S)), $(addprefix $(OBJ_PATH)/, $(x)))
 
 
 # clean files list
-DISTCLEAN_LIST := $(OBJ) \
-
 CLEAN_LIST := $(TARGET) \
 			  $(DISTCLEAN_LIST)
 
@@ -39,17 +40,15 @@ default: makedir all
 $(TARGET).uf2: $(TARGET).elf
 	$(UF) $(TARGET).elf $@
 	
-$(TARGET).elf: $(OBJ) $(LINK_FILE)
+$(TARGET).elf: $(OBJ_C) $(OBJ_S) $(LINK_FILE)
 	$(LD) $(LDFLAGS) $(LINK_FILE) -o $@ $(OBJ)
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c
-	$(CC) $(CCOBJFLAGS) -o $@ $<
+	$(CC) $(CCOBJFLAGS) -o $(OBJ_PATH)/$(notdir $@) $<
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.s
-	$(AS) -o $@ $<
+	$(AS) $(ASFLAGS) -o $(OBJ_PATH)/$(notdir $@) $<
 
-$(TARGET_DEBUG): $(OBJ_DEBUG)
-	$(CC) $(CCFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
 
 # phony rules
 .PHONY: makedir
@@ -64,8 +63,3 @@ all: $(TARGET).uf2
 clean:
 	@echo CLEAN $(CLEAN_LIST)
 	@rm -f $(CLEAN_LIST)
-
-.PHONY: distclean
-distclean:
-	@echo CLEAN $(DISTCLEAN_LIST)
-	@rm -f $(DISTCLEAN_LIST)

@@ -22,12 +22,12 @@
 
 // XOSC registers (See Table 268)
 typedef struct {
-    uint32_t ctrl;
-    uint32_t status;
-    uint32_t dormant;
-    uint32_t startup;
+    uint32_t volatile ctrl;
+    uint32_t volatile status;
+    uint32_t volatile dormant;
+    uint32_t volatile startup;
     uint32_t _ud[3];    // Reserved, not in Table 268
-    uint32_t count;
+    uint32_t volatile count;
 } xosc_hw_t;
 
 #define xosc_hw ((xosc_hw_t *const)XOSC_BASE)

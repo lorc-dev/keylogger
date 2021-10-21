@@ -18,7 +18,7 @@
 
 #define XOSC_STATUS_STABLE_BIT              (1ul<<31)       // Will be set when the oscillator is running and stable
 
-#define STARTUP_DELAY ((((XOSC_MHZ * 1000000) / 1000) / 256)    // =(fCrystal[Hz] * 1ms[s])/256 = +-47
+#define STARTUP_DELAY ((((XOSC_MHZ * 1000000) / 1000) / 256))    // =(fCrystal[Hz] * 1ms[s])/256 = +-47
 
 // XOSC registers (See Table 268)
 typedef struct {

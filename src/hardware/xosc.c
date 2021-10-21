@@ -15,8 +15,8 @@ void xosc_init(void) {
     xosc_hw->startup = STARTUP_DELAY;
 
     // Enable XOSC (Set the enable bit)
-    xosc_hw->ctrl |= XOSC_CTRL_ENABLE_VALUE_ENABLE << XOSC_CTRL_ENABLE_LSB
+    xosc_hw->ctrl |= XOSC_CTRL_ENABLE_VALUE_ENABLE << XOSC_CTRL_ENABLE_LSB;
 
     // Wait for XOSC to be stable
-    while(!(xosc_hw->status & XOSC_STATUS_STABLE_BIT));
+    while((xosc_hw->status & XOSC_STATUS_STABLE_BIT) != XOSC_STATUS_STABLE_BIT);
 }

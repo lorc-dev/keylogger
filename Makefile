@@ -5,7 +5,7 @@ CC := arm-none-eabi-gcc
 CCFLAGS := -mthumb -mcpu=cortex-m0plus -nostdlib -ggdb
 CCOBJFLAGS := $(CCFLAGS) -c
 LD = arm-none-eabi-ld
-LDFLAGS = -T
+LDFLAGS =  --verbose -T
 UF := elf2uf2
 
 # path macros

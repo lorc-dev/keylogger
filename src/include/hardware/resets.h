@@ -11,9 +11,11 @@
 
 // See 2.14.3 Reset Controller
 // TODO: Change to struct
-#define RESETS_RESET        ADDR(RESETS_BASE + 0x0)
-#define RESETS_WDSEL        ADDR(RESETS_BASE + 0x4)
-#define RESETS_RESET_DONE   ADDR(RESETS_BASE + 0x8)
+#define RESETS_RESET_ADR        ADDR(RESETS_BASE + 0x0)
+#define RESETS_WDSEL_ADR        ADDR(RESETS_BASE + 0x4)
+#define RESETS_RESET_DONE_ADR   ADDR(RESETS_BASE + 0x8)
+
+#define RESETS_RESET_BITS            0x01fffffful
 
 // RESET Register
 #define RESETS_RESET_ADC            1ul

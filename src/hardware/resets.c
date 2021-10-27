@@ -11,7 +11,7 @@
  */
 void reset_subsystem(uint32_t bits)
 {
-    RESETS_RESET &= bits;
+    RESETS_RESET_ADR |= bits;
 }
 
 /**
@@ -21,7 +21,7 @@ void reset_subsystem(uint32_t bits)
  */
 void unreset_subsystem(uint32_t bits)
 {
-    RESETS_RESET &= ~bits;
+    RESETS_RESET_ADR &= ~bits;
 }
 
 /**
@@ -31,6 +31,6 @@ void unreset_subsystem(uint32_t bits)
  */
 void unreset_subsystem_wait(uint32_t bits)
 {
-    RESETS_RESET &= ~bits;
-    while((RESETS_RESET_DONE & bits) != bits);
+    RESETS_RESET_ADR &= ~bits;
+    while((RESETS_RESET_DONE_ADR & bits) != bits);
 }

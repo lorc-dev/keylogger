@@ -33,7 +33,6 @@ void clock_configure(enum clock_index clk_index, uint32_t src, uint32_t auxsrc, 
     // When the divisior is increased, avoid momentary overspeed setting the divisor first
     if (div > clocks_hw->clk[clk_index].div)
         clocks_hw->clk[clk_index].div = div;
-
     // If switching a glitchless mux to an aux source
     //  - Switch to an alternate source
     if (has_glitchless_mux(clk_index) && src == CLK_SYS_REF_CTRL_SRC_VALUE_CLKSRC_CLK_AUX) {
@@ -63,8 +62,7 @@ void clock_configure(enum clock_index clk_index, uint32_t src, uint32_t auxsrc, 
 
     // Set the glitchless mux if the clock has one
     if(has_glitchless_mux(clk_index)) {
-        clocks_hw->clk[clk_index].ctrl |= src << CLK_CTRL_SRC_LSB;
-        clocks_hw->clk[clk_index].ctrl &= ~(src << CLK_CTRL_SRC_LSB);
+        clocks_hw->clk[clk_index].ctrl = (clocks_hw->clk[clk_index].ctrl & ~CLK_CTRL_SRC_BITS) | (src << CLK_CTRL_SRC_LSB);
         while(!clocks_hw->clk[clk_index].selected);  // Poll the SELECTED register until the switch is completed
     }
 

@@ -80,7 +80,7 @@ enum clock_index {
 
 #define CLK_CTRL_AUXSRC_LSB     5ul
 #define CLK_CTRL_SRC_LSB        0ul
-
+#define CLK_CTRL_SRC_BITS       0x3ul
 
 // Function prototypes
 void clock_configure(enum clock_index clk_index, uint32_t src, uint32_t auxsrc, uint32_t src_freq, uint32_t freq);

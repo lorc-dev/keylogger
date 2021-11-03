@@ -1,7 +1,8 @@
 #include "include/hardware/gpio.h"
 #include "include/hardware/sio.h"
 #include "include/runtime/runtime.h"
-
+#include "include/hardware/uart.h"
+#include "include/hardware/clocks.h"
 
 #define LED 25
 
@@ -25,8 +26,15 @@ int main()
     sio_init(LED);
     sio_set_dir(LED,OUTPUT);
 
+    uart_init(uart0_hw,9600);
+    gpio_set_function(1,GPIO_FUNC_UART);
+    gpio_set_function(0,GPIO_FUNC_UART);
+    //uart_puts(uart0_hw, "Dit is een test");
+    uint8_t test[5] = {0,1,2,3,4};
 
 	while(1) {
+        uart_puts(uart0_hw, "Dit is een test");
+	    uart_write(uart0_hw,&test,5);
 		sio_put(LED,1);
 		delay(100);
         sio_put(LED,0);

@@ -33,12 +33,13 @@ void clock_configure(enum clock_index clk_index, uint32_t src, uint32_t auxsrc, 
     // When the divisior is increased, avoid momentary overspeed setting the divisor first
     if (div > clocks_hw->clk[clk_index].div)
         clocks_hw->clk[clk_index].div = div;
+
     // If switching a glitchless mux to an aux source
     //  - Switch to an alternate source
     if (has_glitchless_mux(clk_index) && src == CLK_SYS_REF_CTRL_SRC_VALUE_CLKSRC_CLK_AUX) {
         uint32_t mask;
         if (clk_index == clk_ref)
-            mask =  ~CLK_REF_CTRL_SRC_BITS;
+            mask = ~CLK_REF_CTRL_SRC_BITS;
         else
             mask = ~CLK_SYS_CTRL_SRC_BITS;
 
@@ -58,11 +59,11 @@ void clock_configure(enum clock_index clk_index, uint32_t src, uint32_t auxsrc, 
     }
 
     // Set the aux mux
-    clocks_hw->clk[clk_index].ctrl |= auxsrc << CLK_CTRL_AUXSRC_LSB;
+    clocks_hw->clk[clk_index].ctrl = (clocks_hw->clk[clk_index].ctrl & ~CLK_SYS_CTRL_AUXSRC_BITS) | ((auxsrc << CLK_CTRL_AUXSRC_LSB) & CLK_SYS_CTRL_AUXSRC_BITS);
 
     // Set the glitchless mux if the clock has one
     if(has_glitchless_mux(clk_index)) {
-        clocks_hw->clk[clk_index].ctrl = (clocks_hw->clk[clk_index].ctrl & ~CLK_CTRL_SRC_BITS) | (src << CLK_CTRL_SRC_LSB);
+        clocks_hw->clk[clk_index].ctrl = (clocks_hw->clk[clk_index].ctrl & ~CLK_CTRL_SRC_BITS) | ((src << CLK_CTRL_SRC_LSB) & CLK_CTRL_SRC_BITS);
         while(!clocks_hw->clk[clk_index].selected);  // Poll the SELECTED register until the switch is completed
     }
 
@@ -87,11 +88,11 @@ void clocks_init(void) {
     // Enable the xosc
     xosc_init();
 
-    // Before we touch PLLs, switch sys and ref cleanly away from their aux sources.
-    clocks_hw->clk[clk_sys].ctrl &= CLK_SYS_CTRL_SRC_BITS;
+    // Switch sys and ref away from their aux sources.
+    clocks_hw->clk[clk_sys].ctrl &= ~CLK_SYS_CTRL_SRC_BITS;
     while (!clocks_hw->clk[clk_sys].selected);
 
-    clocks_hw->clk[clk_ref].ctrl &= CLK_REF_CTRL_SRC_BITS;
+    clocks_hw->clk[clk_ref].ctrl &= ~CLK_REF_CTRL_SRC_BITS;
     while (!clocks_hw->clk[clk_ref].selected);
 
     // Configure the plls

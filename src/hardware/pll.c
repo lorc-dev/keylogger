@@ -29,7 +29,7 @@ void pll_init() {
     unreset_subsystem_wait(RESETS_RESET_PLL_SYS);
 
     // Set REFDIF and FBDIV_INT.
-    //  - This will clear the BYPASS bit, but this is already the case after a reset.
+    //  - This will also clear the BYPASS bit, but this is already the case after a reset.
     pll_usb_hw->cs = USB_REFDIF;
     pll_usb_hw->fbdiv_int = USB_FDIV;
     pll_sys_hw->cs = SYS_REFDIF;

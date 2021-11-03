@@ -75,7 +75,7 @@ enum clock_index {
 
 #define CLK_SYS_CTRL_SRC_BITS       0x1ul
 #define CLK_REF_CTRL_SRC_BITS       0x3ul
-#define CLK_SYS_CTRL_AUXSRC_BITS    (0x5ul<<5)
+#define CLK_SYS_CTRL_AUXSRC_BITS    (0x7ul<<5)
 #define CLK_REF_CTRL_AUXSRC_BITS    (0x3ul<<5)
 
 #define CLK_CTRL_AUXSRC_LSB     5ul

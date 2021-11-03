@@ -42,12 +42,12 @@ typedef struct {
 
 // VCO parameters
 // See Python script: https://github.com/raspberrypi/pico-sdk/tree/master/src/rp2_common/hardware_clocks/scripts/vcocalc.py
-#define USB_FDIV        (1500ul/XOSC_MHZ)
-#define USB_POST_DIV1   6ul
+#define USB_FDIV        (480ul/XOSC_MHZ)
+#define USB_POST_DIV1   5ul
 #define USB_POST_DIV2   2ul
 #define USB_REFDIF      1ul
 
-#define SYS_FDIV        (480ul/XOSC_MHZ)
+#define SYS_FDIV        (1500ul/XOSC_MHZ)
 #define SYS_POST_DIV1   6ul
 #define SYS_POST_DIV2   2ul
 #define SYS_REFDIF      1ul

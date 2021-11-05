@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 uint32_t integer_division(uint32_t dividend, uint32_t divisor);
+uint32_t ceil_division(uint32_t dividend, uint32_t divisor);
 
 #endif //KEYLOGGER_MATH_H
 

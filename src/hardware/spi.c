@@ -113,3 +113,79 @@ static inline bool spi_is_writable(spi_hw_t *spi) {
 static inline bool spi_is_readable(spi_hw_t *spi) {
     return (spi->sspsr & SPI_SSPSR_RNE_BIT);
 }
+
+/**
+ * Checks if the SSP is currently transmitting and/or receiving a frame or the transmit FIFO is not empty
+ *
+ * @param spi
+ * @return
+ */
+static inline bool spi_is_busy(spi_hw_t *spi) {
+    return (spi->sspsr & SPI_SSPSR_BSY_BIT);
+}
+
+/**
+ * Write len bytes from src to the transmit FIFO, discards any received data
+ *
+ * @param spi
+ * @param src
+ * @param len
+ */
+void spi_write(spi_hw_t *spi, uint8_t *src, uint32_t len) {
+    // Read len bytes into src
+    for (uint32_t i = 0; i < len; i++) {
+        while (!spi_is_writable(spi));
+        spi->sspdr = (uint32_t)*src++;
+    }
+
+    // Clear the receive FIFO
+    while (spi_is_readable(spi))
+        spi->sspdr;
+    // Wait the SSP is idle
+    while (spi_is_busy(spi));
+    // Clear the FIFO again
+    while (spi_is_readable(spi))
+        spi->sspdr;
+}
+
+/**
+ * Read len bytes from the receive FIFO to the destination buffer.
+ * Repeat_tx_data is repeatedly send, in most cases this can be 0
+ *
+ * @param spi
+ * @param repeat_tx_data
+ * @param dst
+ * @param len
+ */
+void spi_read(spi_hw_t *spi, uint8_t repeat_tx_data, uint8_t *dst, uint32_t len) {
+    for(uint32_t i = 0; i < len; i++) {
+        // Write the repeat_tx_data byte
+        while (!spi_is_writable(spi));
+        spi->sspdr = (uint32_t)repeat_tx_data;
+
+        // Read a byte into the destination buffer
+        while (!spi_is_readable(spi));
+        *dst++ = (uint8_t)spi->sspdr;
+    }
+}
+
+/**
+ * Writes len bytes from src to the transmit FIFO.
+ * Simultaneously read len bytes from the receive FIFO into dst
+ *
+ * @param spi
+ * @param src
+ * @param dst
+ * @param len
+ */
+void spi_write_read(spi_hw_t *spi, uint8_t *src, uint8_t *dst, uint32_t len) {
+    for(uint32_t i = 0; i < len; i++) {
+        // Write a byte from the source buffer
+        while (!spi_is_writable(spi));
+        spi->sspdr = (uint32_t)*src++;
+
+        // Read a byte into the destination buffer
+        while (!spi_is_readable(spi));
+        *dst++ = (uint8_t)spi->sspdr;
+    }
+}

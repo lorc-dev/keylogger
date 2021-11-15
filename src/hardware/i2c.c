@@ -41,6 +41,9 @@ void i2c_init(i2c_hw_t *i2c, uint32_t clk_rate) {
 
     // Set clk rate
     i2c_set_clk_rate(i2c, clk_rate);
+
+    // Enable the controller
+    i2c->ic_enable = 1;
 }
 
 /**
@@ -106,4 +109,103 @@ void i2c_set_slave_mode(i2c_hw_t *i2c, bool slave, uint8_t address) {
     }
 
     i2c->ic_enable = 1;
+}
+
+/**
+ * Sets the target address
+ * @note The I2C controller will temporally be disabled
+ *
+ * @param i2c
+ * @param address 7-bit address
+ */
+static inline void i2c_set_target_address(i2c_hw_t *i2c, uint8_t address) {
+    // The I2C controller must be disabled to change the value of the tar register
+    i2c->ic_enable = 0;
+    i2c->ic_tar = (uint32_t)address;
+    i2c->ic_enable = 1;
+}
+
+/**
+ * Writes len bytes from src to address
+ *
+ * @param i2c
+ * @param address 7-bit address
+ * @param src
+ * @param len
+ * @param start 1: Start transaction | 0: don't start transaction
+ * @param stop  1: Stop transaction | 0: don't stop transaction
+ * @return 0: no errors occurred
+ */
+uint32_t i2c_write(i2c_hw_t *i2c, uint8_t address, uint8_t *src, uint32_t len, bool start, bool stop) {
+    i2c_set_target_address(i2c, address);
+    uint32_t abort_source = 0;
+
+    for (uint32_t i = 0; i < len; i++) {
+        uint32_t restart_value = (uint32_t)(start && i == 0);
+        uint32_t stop_value = (uint32_t)(stop && i == len - 1);
+
+        i2c->ic_data_cmd = restart_value << I2C_IC_DATA_CMD_RESTART_LSB |
+                           stop_value << I2C_IC_DATA_CMD_STOP_LSB |
+                           I2C_IC_DATA_CMD_CMD_VALUE_MASTER_WRITE << I2C_IC_DATA_CMD_CMD_LSB|
+                           *src++;
+
+        // Wait until the transmission is complete
+        // TX_EMPTY_CTRL must be set (done in i2c_init())
+        while (!(i2c->ic_raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_EMPTY_BIT));
+
+        // Check if there was an abort
+        abort_source = i2c->ic_tx_abrt_source;
+        // Clear the abort flag and reason, clear on read
+        i2c->ic_clr_tx_abrt;
+
+        // If the transaction was completed or aborted, wait until the STOP flag is set
+        if (stop_value || abort_source) {
+            while (!(i2c->ic_raw_intr_stat & I2C_IC_RAW_INTR_STAT_STOP_DET_BIT));
+        }
+
+        // Stop sending data when aborted
+        if (abort_source)
+            break;
+
+    }
+
+    return abort_source;
+}
+
+/**
+ * Reads len bytes from address into dst
+ *
+ * @param i2c
+ * @param address 7-bit address
+ * @param dst
+ * @param len
+ * @param start 1: Start transaction | 0: don't star transaction
+ * @param stop  1: Stop transaction | 0: don't stop transaction
+ * @return 0: no errors occurred
+ */
+uint32_t i2c_read(i2c_hw_t *i2c, uint8_t address, uint8_t *dst, uint32_t len, bool start, bool stop) {
+    i2c_set_target_address(i2c, address);
+    uint32_t abort_source;
+
+    for (uint32_t i = 0; i < len; i++) {
+        uint32_t restart_value = (uint32_t)(start && i == 0);
+        uint32_t stop_value = (uint32_t)(stop && i == len - 1);
+
+        i2c->ic_data_cmd = restart_value << I2C_IC_DATA_CMD_RESTART_LSB |
+                           stop_value << I2C_IC_DATA_CMD_STOP_LSB |
+                           I2C_IC_DATA_CMD_CMD_VALUE_MASTER_READ << I2C_IC_DATA_CMD_CMD_LSB;
+
+        // Wait until there is data available in the FIFO buffer or an abort occurred
+        while (!i2c->ic_rxflr && !abort_source)
+            abort_source = i2c->ic_tx_abrt_source;
+
+        // Stop if aborted
+        if (abort_source)
+            break;
+
+        // Read bit 8:0 from the data_cmd register into dst
+        *dst++ = (uint8_t)i2c->ic_data_cmd;
+    }
+
+    return abort_source;
 }

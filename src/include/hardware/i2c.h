@@ -58,6 +58,7 @@ typedef struct {
 #define i2c0_hw ((i2c_hw_t *const)I2C0_BASE)
 #define i2c1_hw ((i2c_hw_t *const)I2C1_BASE)
 
+
 // IC_CON register (See Table 463)
 // Bits
 #define I2C_IC_CON_STOP_DET_IF_MASTER_ACTIVE_BIT    (1ul<<10)
@@ -77,15 +78,72 @@ typedef struct {
 #define I2C_IC_CON_SPEED_VALUE_FM                   2ul
 #define I2C_IC_CON_SPEED_VALUE_HSM                  3ul
 
-// IC_SDA_HOLD register (See Table 491)
-#define I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD_BITS     (15ul<<16)
-#define I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_BITS     (15ul)
 
+// IC_DATA_CMD register (See Table 466)
+#define I2C_IC_DATA_CMD_FIRST_DATA_BYTE_BIT (1ul<<11)
+#define I2C_IC_DATA_CMD_RESTART_BIT         (1ul<<10)
+#define I2C_IC_DATA_CMD_STOP_BIT            (1ul<<9)
+#define I2C_IC_DATA_CMD_CMD_BIT             (1ul<<8)
+#define I2C_IC_DATA_CMD_DAT_BITS            (0xff)
+// LSB
+#define I2C_IC_DATA_CMD_FIRST_DATA_BYTE_LSB 11ul
+#define I2C_IC_DATA_CMD_RESTART_LSB         10ul
+#define I2C_IC_DATA_CMD_STOP_LSB            9ul
+#define I2C_IC_DATA_CMD_CMD_LSB             8ul
+#define I2C_IC_DATA_CMD_DAT_LSB             0ul
+// Values
+#define I2C_IC_DATA_CMD_CMD_VALUE_MASTER_WRITE  0ul
+#define I2C_IC_DATA_CMD_CMD_VALUE_MASTER_READ   1ul
+
+
+// IC_RAW_INTR_STAT register (See Table 473)
+#define I2C_IC_RAW_INTR_STAT_RESTART_DET_BIT    (1ul<<12)
+#define I2C_IC_RAW_INTR_STAT_GEN_CALL_BIT       (1ul<<11)
+#define I2C_IC_RAW_INTR_STAT_START_DET_BIT      (1ul<<10)
+#define I2C_IC_RAW_INTR_STAT_STOP_DET_BIT       (1ul<<9)
+#define I2C_IC_RAW_INTR_STAT_ACTIVITY_BIT       (1ul<<8)
+#define I2C_IC_RAW_INTR_STAT_RX_DONE_BIT        (1ul<<7)
+#define I2C_IC_RAW_INTR_STAT_TX_ABRT_BIT        (1ul<<6)
+#define I2C_IC_RAW_INTR_STAT_RD_REQ_BIT         (1ul<<5)
+#define I2C_IC_RAW_INTR_STAT_TX_EMPTY_BIT       (1ul<<4)
+#define I2C_IC_RAW_INTR_STAT_TX_OVER_BIT        (1ul<<3)
+#define I2C_IC_RAW_INTR_STAT_RX_FULL_BIT        (1ul<<2)
+#define I2C_IC_RAW_INTR_STAT_RX_OVER_BIT        (1ul<<1)
+#define I2C_IC_RAW_INTR_STAT_RX_UNDER_BIT       (1ul)
+
+
+// IC_SDA_HOLD register (See Table 491)
+#define I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD_BITS     (0xfffful<<16)
+#define I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_BITS     (0xfffful)
+
+
+// IC_TX_ABRT_SOURCE register (See Table 492)
+#define I2C_IC_TX_ABRT_SOURCE_TX_FLUSH_CNT_BITS         (0x1fful<<23)
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_USER_ABRT_BIT        (1ul<<16)   // Transfer abort detected by master
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_SLVRD_INTX_BIT       (1ul<<15)   // Slave trying to transmit in read mode
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_SLV_ARBLOST_BIT      (1ul<<14)   // Slave lost arbitration to remote master
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_SLVFLUSH_TXFIFO_BIT  (1ul<<13)   // Slave flushes existing data in TX FIFO upon read cmd
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_LOST_BIT             (1ul<<12)   // Master or slave-transmitter lost arbitration
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_MASTER_DIS_BIT       (1ul<<11)   // User initiating master operation when master disabled
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_10B_RD_NORSTRT_BIT   (1ul<<10)   // Master trying to read in 10B addr mode when RESTART disabled
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_SBYTE_NORSTRT_BIT    (1ul<<9)    // User trying to send START byte when RESTART disabled
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_HS_NORSTRT_BIT       (1ul<<8)    // User trying to switch master to HS mode when RESTART disabled
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_SBYTE_ACKDET_BIT     (1ul<<7)    // ACK detected for START byte
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_HS_ACKDET_BIT        (1ul<<6)    // HS master code ACKed in HS mode
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_GCALL_READ_BIT       (1ul<<5)    // General Call is followed by read from bus
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_GCALL_NOACK_BIT      (1ul<<4)    // General Call not ACKed by any slave
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_TXDATA_NOACK_BIT     (1ul<<3)    // Transmitted data not ACKed by addressed slave
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR2_NOACK_BIT    (1ul<<2)    // Byte 2 of 10B address not ACKed by any slave
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK_BIT    (1ul<<1)    // Byte 1 of 10B address not ACKed by anny slave
+#define I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK_BIT    (1ul)       // NOACK for 7-bit address
 
 
 // Function prototypes
 void i2c_init(i2c_hw_t *i2c, uint32_t clk_rate);
 static inline void i2c_set_clk_rate(i2c_hw_t *i2c, uint32_t clk_rate);
 void i2c_set_slave_mode(i2c_hw_t *i2c, bool slave, uint8_t address);
+static inline void i2c_set_target_address(i2c_hw_t *i2c, uint8_t address);
+uint32_t i2c_write(i2c_hw_t *i2c, uint8_t address, uint8_t *src, uint32_t len, bool start, bool stop);
+uint32_t i2c_read(i2c_hw_t *i2c, uint8_t address, uint8_t *dst, uint32_t len, bool start, bool stop);
 
 #endif //KEYLOGGER_I2C_H

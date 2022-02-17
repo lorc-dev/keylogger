@@ -151,7 +151,7 @@ uint32_t i2c_write(i2c_hw_t *i2c, uint8_t address, uint8_t *src, uint32_t len, b
 
         // Wait until the transmission is complete
         // TX_EMPTY_CTRL must be set (done in i2c_init())
-        while (!(i2c->ic_raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_EMPTY_BIT));
+        while (!(i2c->ic_raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_EMPTY_BIT));   // TODO: add timeout
 
         // Check if there was an abort
         abort_source = i2c->ic_tx_abrt_source;

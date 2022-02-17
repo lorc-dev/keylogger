@@ -167,6 +167,38 @@ static inline void ssd1306_activate_scrolling(ssd1306_t *ssd1306, bool activate)
 void ssd1306_display(ssd1306_t *ssd1306) {
     int count = (ssd1306->width * ssd1306->height)/8;
     uint8_t start_byte = SSD1306_COMMAND_SET_DISPLAY_START_LINE;
-    i2c_write(ssd1306->i2c, ssd1306->address, &start_byte,1,true, false);
+    i2c_write(ssd1306->i2c, ssd1306->address, &start_byte,1, true, false);
     i2c_write(ssd1306->i2c, ssd1306->address, ssd1306->buffer, count, false, true);
 }
+
+/**
+ * Clears the display buffer.
+ *
+ * @param ssd1306
+ */
+void ssd1306_clear_display(ssd1306_t *ssd1306) {
+    int len = (ssd1306->width * ssd1306->height)/8;
+    for(int i = 0; i < len; i++) {
+        ssd1306->buffer[i] = 0;
+    }
+}
+
+/**
+ * Sets or clears a pixel at a (x,y) coordinate
+ *
+ * @param ssd1306
+ * @param x
+ * @param y
+ * @param on true: turn the pixel on | false: turn the pixel off
+ */
+void ssd1306_set_pixel(ssd1306_t *ssd1306, uint8_t x, uint8_t y, bool on) {
+    uint32_t buffer_index = x + (y/8) * ssd1306->width;
+
+    if (on) {
+        ssd1306->buffer[buffer_index] |= (1 << (y & 7));
+    }
+    else {
+        ssd1306->buffer[buffer_index] &= ~(1 << (y & 7));
+    }
+}
+

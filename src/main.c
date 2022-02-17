@@ -51,13 +51,32 @@ int main()
     for(int i = 0; i < 1024; i++){
         buffer[i] = 0;
     }
-    buffer[5] = 255;
+    buffer[0] = 8;
+    buffer[1] = 8;
+    buffer[2] = 8;
+    buffer[3] = 8;
+
+    buffer[100] = 8;
+    buffer[101] = 16;
+    buffer[102] = 32;
+    buffer[103] = 64;
+
+    buffer[129] = 255;
+    buffer[130] = 127;
+    buffer[131] = 63;
+    buffer[132] = 31;
+
+    for(int y = 0; y < 32; y++)
+        for(int x = 0; x < 128; x++)
+            if (x == y)
+                ssd1306_set_pixel(&ssd1306, x, y, true);
+
 
 	while(1) {
 	    spi_write(spi0_hw, &test,5);
         uart_puts(uart0_hw, "Dit is een test");
 	    uart_write(uart0_hw,&test,5);
-	    i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
+	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
 	    ssd1306_display(&ssd1306);
 		sio_put(LED,1);
 		delay(500);

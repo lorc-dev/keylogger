@@ -51,6 +51,8 @@ static inline void ssd1306_set_com_pins(ssd1306_t *ssd1306);
 static inline void ssd1306_set_precharge_period(ssd1306_t *ssd1306, uint8_t phase1_period, uint8_t phase2_period);
 static inline void ssd1306_activate_scrolling(ssd1306_t *ssd1306, bool activate);
 void ssd1306_display(ssd1306_t *ssd1306);
+void ssd1306_clear_display(ssd1306_t *ssd1306);
+void ssd1306_set_pixel(ssd1306_t *ssd1306, uint8_t x, uint8_t y, bool on);
 
 
 #endif //KEYLOGGER_SSD1306_H

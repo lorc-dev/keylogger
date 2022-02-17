@@ -8,8 +8,8 @@
 #include "../include/hardware/i2c.h"
 
 
-ssd1306_t ssd1306_init(i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height) {
-    ssd1306_t ssd1306 = {i2c, address, width, height};
+ssd1306_t ssd1306_init(i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height, uint8_t * buffer) {
+    ssd1306_t ssd1306 = {i2c, address, width, height, buffer};
 
     // Turn the display off
     ssd1306_display_on(&ssd1306, false);
@@ -157,4 +157,16 @@ static inline void ssd1306_activate_scrolling(ssd1306_t *ssd1306, bool activate)
         ssd1306_send_command(ssd1306, SSD1306_COMMAND_ACTIVATE_SCROLL);
     else
         ssd1306_send_command(ssd1306, SSD1306_COMMAND_DEACTIVATE_SCROLL);
+}
+
+/**
+ * Send the display buffer
+ *
+ * @param ssd1306
+ */
+void ssd1306_display(ssd1306_t *ssd1306) {
+    int count = (ssd1306->width * ssd1306->height)/8;
+    uint8_t start_byte = SSD1306_COMMAND_SET_DISPLAY_START_LINE;
+    i2c_write(ssd1306->i2c, ssd1306->address, &start_byte,1,true, false);
+    i2c_write(ssd1306->i2c, ssd1306->address, ssd1306->buffer, count, false, true);
 }

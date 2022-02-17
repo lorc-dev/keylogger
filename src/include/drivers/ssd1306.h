@@ -15,6 +15,7 @@ typedef struct {
     const uint8_t address;
     const uint8_t width;
     const uint8_t height;
+    uint8_t *buffer; // 128 * 64 / 8
 }ssd1306_t;
 
 // Fundamental Commands (See Table 9-1-1)
@@ -39,7 +40,7 @@ typedef struct {
 #define SSD1306_COMMAND_CHARGE_PUMP_SETTING 0x8D
 
 // Function prototypes
-ssd1306_t ssd1306_init(i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height);
+ssd1306_t ssd1306_init(i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height, uint8_t * buffer);
 static inline void ssd1306_send_command(ssd1306_t *ssd1306, uint8_t command);
 static inline void ssd1306_send_commands(ssd1306_t *ssd1306, uint8_t *command, uint32_t len);
 void ssd1306_display_on(ssd1306_t *ssd1306, bool on);
@@ -49,6 +50,7 @@ static inline void ssd1306_set_com_output_scan_dir(ssd1306_t *ssd1306, bool rema
 static inline void ssd1306_set_com_pins(ssd1306_t *ssd1306);
 static inline void ssd1306_set_precharge_period(ssd1306_t *ssd1306, uint8_t phase1_period, uint8_t phase2_period);
 static inline void ssd1306_activate_scrolling(ssd1306_t *ssd1306, bool activate);
+void ssd1306_display(ssd1306_t *ssd1306);
 
 
 #endif //KEYLOGGER_SSD1306_H

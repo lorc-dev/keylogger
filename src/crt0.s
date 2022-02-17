@@ -146,6 +146,16 @@ _entry:
     // Call the main function (C)
 	ldr r1, =main
 	blx r1
+//	ldr r1, =exit
+//    blx r1
+
+//.weak _exit
+//.type _exit,%function
+//.thumb_func
+//_exit:
+//1: // separate label because _exit can be moved out of branch range
+//    bkpt #0
+//    b 1b
 
 
 

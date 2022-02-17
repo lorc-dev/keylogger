@@ -3,6 +3,8 @@
 #include "include/runtime/runtime.h"
 #include "include/hardware/uart.h"
 #include "include/hardware/spi.h"
+#include "include/hardware/i2c.h"
+#include "include/drivers/ssd1306.h"
 
 #define LED 25
 
@@ -39,15 +41,28 @@ int main()
     gpio_set_function(3,GPIO_FUNC_SPI);
     gpio_set_function(4,GPIO_FUNC_SPI);
 
+    // I2C
+    i2c_init(i2c0_hw, 100000);
+    gpio_set_function(8, GPIO_FUNC_I2C);
+    gpio_set_function(9, GPIO_FUNC_I2C);
+    uint8_t buffer[1024];
+    ssd1306_t ssd1306 = ssd1306_init(i2c0_hw, 0x3C, 128,32, buffer);
+
+    for(int i = 0; i < 1024; i++){
+        buffer[i] = 0;
+    }
+    buffer[5] = 255;
 
 	while(1) {
 	    spi_write(spi0_hw, &test,5);
         uart_puts(uart0_hw, "Dit is een test");
 	    uart_write(uart0_hw,&test,5);
+	    i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
+	    ssd1306_display(&ssd1306);
 		sio_put(LED,1);
-		delay(100);
+		delay(500);
         sio_put(LED,0);
-		delay(100);
+		delay(500);
 	}
 
 	return 0;

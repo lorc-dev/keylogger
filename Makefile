@@ -39,9 +39,9 @@ default: makedir all
 # non-phony targets
 $(TARGET).uf2: $(TARGET).elf
 	$(UF) $(TARGET).elf $@
-	
+# $(LD) $(LDFLAGS) $(LINK_FILE) -o $@ $(OBJ)
 $(TARGET).elf: $(OBJ_C) $(OBJ_S) $(LINK_FILE)
-	$(LD) $(LDFLAGS) $(LINK_FILE) -o $@ $(OBJ)
+	$(CC) $(CCFLAGS) -lc -o $@ $(OBJ) -T $(LINK_FILE) -lgcc
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c
 	$(CC) $(CCOBJFLAGS) -o $(OBJ_PATH)/$(notdir $@) $<
@@ -57,6 +57,10 @@ makedir:
 
 .PHONY: all
 all: $(TARGET).uf2
+
+.PHONY: upload
+upload: $(TARGET).uf2
+	@openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program bin/app.elf verify reset exit"
 
 
 .PHONY: clean

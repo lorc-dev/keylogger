@@ -154,8 +154,8 @@ _entry:
 //.thumb_func
 //_exit:
 //1: // separate label because _exit can be moved out of branch range
-//    bkpt #0
-//    b 1b
+ //   bkpt #0
+ //   b 1b
 
 
 

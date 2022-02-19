@@ -69,19 +69,19 @@ int main()
     for(int y = 0; y < 32; y++)
         for(int x = 0; x < 128; x++)
             if (x == y)
-                ssd1306_set_pixel(&ssd1306, x, y, true);
+                ssd1306_set_pixel(&ssd1306, x+y/3, y, true);
 
-
+    ssd1306_display(&ssd1306);
 	while(1) {
 	    spi_write(spi0_hw, &test,5);
         uart_puts(uart0_hw, "Dit is een test");
 	    uart_write(uart0_hw,&test,5);
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
-	    ssd1306_display(&ssd1306);
+
 		sio_put(LED,1);
-		delay(500);
+		delay(150);
         sio_put(LED,0);
-		delay(500);
+		delay(150);
 	}
 
 	return 0;

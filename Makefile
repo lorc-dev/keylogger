@@ -2,7 +2,7 @@
 AS = arm-none-eabi-as
 ASFLAGS := -g
 CC := arm-none-eabi-gcc
-CCFLAGS := -mthumb -mcpu=cortex-m0plus -nostdlib -ggdb
+CCFLAGS := -mthumb -mcpu=cortex-m0plus -nostdlib -ggdb -ffreestanding
 CCOBJFLAGS := $(CCFLAGS) -c
 LD = arm-none-eabi-ld
 LDFLAGS =  --verbose  -T
@@ -41,7 +41,7 @@ $(TARGET).uf2: $(TARGET).elf
 	$(UF) $(TARGET).elf $@
 # $(LD) $(LDFLAGS) $(LINK_FILE) -o $@ $(OBJ)
 $(TARGET).elf: $(OBJ_C) $(OBJ_S) $(LINK_FILE)
-	$(CC) $(CCFLAGS) -lc -o $@ $(OBJ) -T $(LINK_FILE) -lgcc
+	$(CC) $(CCFLAGS) -lc -o $@ $(OBJ) -T $(LINK_FILE) -lgcc  -specs=nano.specs
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c
 	$(CC) $(CCOBJFLAGS) -o $(OBJ_PATH)/$(notdir $@) $<

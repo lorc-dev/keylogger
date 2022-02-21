@@ -5,6 +5,7 @@
 #include "include/hardware/spi.h"
 #include "include/hardware/i2c.h"
 #include "include/drivers/ssd1306.h"
+#include "include/hardware/timer.h"
 
 #define LED 25
 
@@ -79,9 +80,9 @@ int main()
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
 
 		sio_put(LED,1);
-		delay(150);
+        wait_ms(500);   //delay(150);
         sio_put(LED,0);
-		delay(150);
+        wait_ms(500);   //delay(150);
 	}
 
 	return 0;

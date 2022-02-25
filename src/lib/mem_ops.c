@@ -1,6 +1,6 @@
 //
 // Created by Lorenz on 21/02/2022.
-// From https://github.com/gcc-mirror/gcc/blob/master/libgcc
+// From: https://github.com/gcc-mirror/gcc/blob/master/libgcc
 // Public domain
 //
 #include <stdint.h>

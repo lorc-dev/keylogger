@@ -6,7 +6,8 @@
 .section .vectors, "ax"
 .align 2 
 
-.global __vectors
+.global __vectors, __VECTOR_TABLE
+__VECTOR_TABLE:
 __vectors:
 .word __StackTop  
 .word _reset_handler
@@ -111,6 +112,9 @@ decl_isr isr_irq31
 .thumb_func
 __unhandled_user_irq:
     bl __get_current_exception
+    subs r0, #16
+.global unhandled_user_irq_num_in_r0
+unhandled_user_irq_num_in_r0:
     bkpt #0
     
 .section .text

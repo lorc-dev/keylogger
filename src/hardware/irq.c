@@ -26,7 +26,7 @@ void irq_set_enabled(uint32_t num, bool enabled) {
 }
 
 static inline irq_handler_t *get_vtable(void) {
-    return (irq_handler_t *) m0plus_scb_hw->vtor;   // TODO: check lsb
+    return (irq_handler_t *) (m0plus_scb_hw->vtor);   // TODO: check lsb
 }
 
 
@@ -38,4 +38,5 @@ static inline irq_handler_t *get_vtable(void) {
  */
 void irq_set_handler(uint32_t num, irq_handler_t handler) {
     get_vtable()[num + 16] = handler;
+    __asm volatile ("dmb" : : : "memory");
 }

@@ -320,6 +320,7 @@ typedef struct {
     uint16_t id_product;        // Product ID
     uint16_t bcd_device;        // Device release number, BCD encoded
     uint8_t i_manufacturer;     // Index of string descriptor describing manufacturer
+    uint8_t i_product;          // Index of string descriptor describing device serial number
     uint8_t i_serial_number;    // Index of string descriptor describing the device's serial number
     uint8_t b_num_configurations;   // Number of possible configurations
 } usb_device_descriptor_t;

@@ -92,6 +92,7 @@ void usb_irq(void) {
     // Device connected or disconnected
     if (status & USB_INTS_HOST_CONN_DIS_BIT) {
         if (device_speed()) {
+            uart_puts(uart0_hw, "con");
             // USB device connected
             usb_device_attach(&usb_device);
         }
@@ -173,13 +174,7 @@ void usb_device_detach(usb_device_t * device) {
  * @param device
  */
 void usb_enum_device(usb_device_t * device) {
-    // Wait min 50 ms reset and wait again
-    wait_ms(USB_RESET_DELAY);
-    usb_reset_bus();
-    wait_ms(USB_RESET_DELAY);
-
-    //device->speed = device_speed();
-    if (device_speed() == usb_disconnected) return; // Disconnected while waiting?
+    device->speed = device_speed();
 
     // Get first 8 bytes of device descriptor to get endpoint 0 size
     usb_setup_data_t setup_request = (usb_setup_data_t) {
@@ -196,10 +191,6 @@ void usb_enum_device(usb_device_t * device) {
     device->max_packet_size_ep_0 = ((usb_device_descriptor_t *) usb_ctrl_buffer)->b_max_packet_size_0;
     endpoints[0].w_max_packet_size = device->max_packet_size_ep_0;  // Only one device, so set max_packet_size in endpoint struct
 
-    // Reset the bus and wait
-    usb_reset_bus();
-    wait_ms(USB_RESET_DELAY);
-
     // Set new address
     setup_request = (usb_setup_data_t) {
             .bm_request_type_bits = { .recipient = usb_bm_request_type_recipient_device,
@@ -213,7 +204,7 @@ void usb_enum_device(usb_device_t * device) {
     };
     usb_send_control_transfer(0, &setup_request, NULL);
     device->address = USB_DEVICE_ADDRESS;
-
+    wait_ms(2); // Device has 2 ms to get ready to respond to the new address
 
     // Get full device descriptor
     setup_request = (usb_setup_data_t) {
@@ -227,6 +218,7 @@ void usb_enum_device(usb_device_t * device) {
             .w_length = 18
     };
     usb_send_control_transfer(device->address, &setup_request, usb_ctrl_buffer);
+    // Extract data from the descriptor
     device->product_id = ((usb_device_descriptor_t *) usb_ctrl_buffer)->id_product;
     device->vendor_id = ((usb_device_descriptor_t *) usb_ctrl_buffer)->id_vendor;
     device->configuration_count = ((usb_device_descriptor_t *) usb_ctrl_buffer)->b_num_configurations;
@@ -243,8 +235,12 @@ void usb_enum_device(usb_device_t * device) {
             .w_length = 9
     };
     usb_send_control_transfer(device->address, &setup_request, usb_ctrl_buffer);
+
+    // Get full config descriptor (+ interface, endpoint,... descriptor)
+    setup_request.w_length = ((usb_configuration_descriptor_t *) usb_ctrl_buffer)->w_total_length;  // Update the request length
+    usb_send_control_transfer(device->address, &setup_request, usb_ctrl_buffer);
     device->interface_count = ((usb_configuration_descriptor_t *) usb_ctrl_buffer)->b_num_interfaces;
-    // TODO: get full config descriptor?
+
 
     // Set configured
     setup_request = (usb_setup_data_t) {

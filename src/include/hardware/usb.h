@@ -10,10 +10,15 @@
 #include "addressmap.h"
 #include "irq.h"
 
+// Configuration options
 #define USB_DEVICE_ADDRESS          0x1     // Only one device, so we can hard code the address
 #define USB_RESET_DELAY             100     // 50 ms according to the USB spec, some devices take longer
 #define USB_CONFIGURATION_NUMBER    0x1     // Assume there is only one configuration, but if not, the number can be chosen here
 
+
+/////////////////////////
+/// USB controller hw ///
+/////////////////////////
 
 // USB registers (See Table 407: List of USB registers)
 typedef struct {
@@ -206,6 +211,10 @@ typedef struct {
 #define USB_SIE_STATUS_LINE_STATE_LSB       2
 
 
+////////////////////
+/// USB protocol ///
+////////////////////
+
 typedef enum {
     usb_disconnected,
     usb_low_speed,
@@ -259,10 +268,10 @@ typedef enum {
 } usb_descriptor_types_t;
 
 typedef enum {
-    usb_data_flow_types_control_transfer,
+    usb_data_flow_types_control_transfer = 0,
+    usb_data_flow_types_isochronous_transfer,
     usb_data_flow_types_bulk_transfer,
-    usb_data_flow_types_interrupt_transfer,
-    usb_data_flow_types_isochronous_transfer
+    usb_data_flow_types_interrupt_transfer
 } usb_data_flow_types_t;
 
 typedef struct {
@@ -278,19 +287,18 @@ typedef struct {
     // Configuration descriptor
     uint8_t interface_count;    // Assume only 1 configuration
 
+    // Interface descriptor
+    uint8_t interface_number_hid;   // Only support the HID class
 
-
-    struct {
-        bool connected;
-        bool suspended;
-        bool addressed;
-        bool configured;
-    }status;
+    // Endpoint descriptor
+    uint8_t interrupt_out_endpoint_number;
+    uint16_t interrupt_out_endpoint_max_packet_size;
+    uint8_t interrupt_out_endpoint_polling_interval;
 
 } usb_device_t;
 
 // Setup data format (See Table 9-2 Format of Setup Data (usb20 spec))
-typedef struct {
+typedef struct __attribute__ ((packed)) {
     union {
         struct {
             uint8_t recipient : 5;  // Use: usb_bm_request_type_recipient_t
@@ -308,7 +316,7 @@ typedef struct {
 } usb_setup_data_t;
 
 // Standard Device Descriptor (See Table 9-8 (usb20 spec))
-typedef struct {
+typedef struct __attribute__ ((packed)) {
     uint8_t b_length;           // Size of this descriptor in bytes
     uint8_t b_descriptor_type;  // Constant 1
     uint16_t bcd_usb;           // Usb Spec release number, BCD encoded
@@ -326,7 +334,7 @@ typedef struct {
 } usb_device_descriptor_t;
 
 // Standard Configuration Descriptor (See Table 9-10 (usb20 spec))
-typedef struct {
+typedef struct __attribute__ ((packed)) {
     uint8_t b_length;           // Size of this descriptor in bytes
     uint8_t b_descriptor_type;  // Constant 2
     uint16_t w_total_length;    // Total length of data returned for this configuration
@@ -338,6 +346,44 @@ typedef struct {
 
 } usb_configuration_descriptor_t;
 
+// Standard Interface Descriptor (See Table 9-12 (usb20 spec))
+typedef struct __attribute__ ((packed)) {
+    uint8_t b_length;               // Size of this descriptor in bytes
+    uint8_t b_descriptor_type;      // Constant 4
+    uint8_t b_interface_number;     // Number of this interface
+    uint8_t b_alternate_setting;    // Value used to select this alternate setting for the interface identified in the prior field
+    uint8_t b_num_endpoints;        // Number of endpoints used by this interface
+    uint8_t b_interface_class;      // Class code
+    uint8_t b_interface_sub_class;  // Subclass code
+    uint8_t b_interface_protocol;   // Protocol code
+    uint8_t i_interface;            // Index of string descriptor describing this interface
+} usb_interface_descriptor_t;
+
+// Standard Endpoint Descriptor (See Table 9-13 (usb20 spec))
+typedef struct __attribute__ ((packed)) {
+    uint8_t b_length;               // Size of this descriptor in bytes
+    uint8_t b_descriptor_type;      // Constant 5
+    union {
+        struct {
+            uint8_t endpoint_number : 4;
+            uint8_t reserved : 3;
+            uint8_t direction : 1;  // 1 = IN, 0 = OUT
+        } b_endpoint_address_bits;
+        uint8_t b_endpoint_address; // The address of the endpoint on the USB device
+    };
+    union {
+        struct {
+            uint8_t transfer_type : 2;
+            uint8_t synchronization_type : 2;
+            uint8_t usage_type : 2;
+            uint8_t reserved : 2;
+        } bm_attributes_bits;
+        uint8_t bm_attributes;      // This field describes the endpoint’s attributes when it is configured using the bConfigurationValue
+    };
+    uint16_t w_max_packet_size;     // Maximum packet size this endpoint is capable of sending or receiving when this configuration is selected.
+    uint8_t b_interval;             // Interval for polling endpoint for data transfers. Expressed in frames or microframes depending on the device operating speed
+} usb_endpoint_descriptor_t;
+
 struct endpoint_struct {
     bool receive;   // 1 = receive, 0 = transmit
     bool last_buffer;
@@ -347,10 +393,10 @@ struct endpoint_struct {
     uint8_t buffer_selector;    // See RP2040-E4 bug
 
     uint8_t device_address;
-    uint8_t endpoint_number;
+    uint8_t endpoint_number;    // Endpoint on device
     uint8_t pid;
 
-    uint8_t interrupt_number;
+    uint8_t interrupt_number;   // Internal endpoint number (0-15) 0 = epx
 
     uint32_t volatile * endpoint_control;   // Endpoint control register
     uint32_t volatile * buffer_control;     // Buffer control register
@@ -362,10 +408,20 @@ struct endpoint_struct {
     uint16_t len;
     uint16_t total_len;
     uint16_t transfer_size;
+    uint8_t interrupt_interval;
 };
 
+// USB descriptors
+#define USB_DESCRIPTOR_B_LENGTH_OFFSET                  0ul
+#define USB_DESCRIPTOR_B_DESCRIPTOR_TYPE_OFFSET         1ul
+#define USB_ENDPOINT_DESCRIPTOR_MAX_PACKET_SIZE_BITS    0x7FFul
 
-// Function prototypes
+// USB class codes
+#define USB_CLASS_CODE_HID  0x03
+
+///////////////////////////
+/// Function prototypes ///
+///////////////////////////
 void usb_init(usb_device_t * device);
 static void usb_init_endpoints(void);
 static void usb_irq(void);
@@ -375,14 +431,15 @@ void usb_device_detach(usb_device_t * device);
 void usb_enum_device(usb_device_t * device);
 static void usb_reset_bus(void);
 static void usb_setup_send(uint8_t device_address, usb_setup_data_t *setup_packet);
-static void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address, uint8_t endpoint_number, uint8_t direction, uint16_t w_max_packet_size, usb_data_flow_types_t transfer_type, uint8_t b_interval);
-static void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpoint, uint16_t endpoint_number,uint8_t * buffer, uint16_t buffer_len, uint8_t direction);
-static void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_packet, uint8_t * data);
+void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address, uint8_t endpoint_number, uint8_t direction, uint16_t w_max_packet_size, usb_data_flow_types_t transfer_type, uint8_t b_interval);
+void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpoint, uint16_t endpoint_number,uint8_t * buffer, uint16_t buffer_len, uint8_t direction);
+void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_packet, uint8_t * data);
 static bool usb_endpoint_transfer_continue(struct endpoint_struct *endpoint);
 static void usb_endpoint_transfer_complete(struct endpoint_struct *endpoint);
 static void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint);
 static void usb_handle_buff_status(void);
 void dev_connected(void); // TODO: remove temp function
 static void handle_transfer_complete(void);
+struct endpoint_struct * usb_get_endpoint(uint8_t endpoint_number);
 
 #endif //KEYLOGGER_USB_H

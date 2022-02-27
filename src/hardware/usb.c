@@ -11,6 +11,7 @@
 #include "../include/hardware/irq.h"
 #include "../include/hardware/timer.h"
 #include "../include/hardware/uart.h"   // TODO: remove temp import
+#include "../include/drivers/usb_host_hid.h"
 
 struct endpoint_struct endpoints[16];
 static uint8_t usb_ctrl_buffer[256];
@@ -73,6 +74,7 @@ static void usb_init_endpoints(void) {
     endpoints[0].endpoint_control = &usb_host_dpsram->epx_ctrl;
     endpoints[0].dps_data_buffer = &usb_host_dpsram->data_buffers[0];
     endpoints[0].interrupt_number = 0;
+    endpoints[0].interrupt_interval = 0;
 
     // Interrupt endpoints
     for (int i = 1; i < 16; i++) {
@@ -169,7 +171,7 @@ void usb_device_detach(usb_device_t * device) {
 }
 
 /**
- * Enumerate and setup the USB device
+ * Enumerate and configure the USB device
  *
  * @param device
  */
@@ -178,10 +180,11 @@ void usb_enum_device(usb_device_t * device) {
 
     // Get first 8 bytes of device descriptor to get endpoint 0 size
     usb_setup_data_t setup_request = (usb_setup_data_t) {
-        .bm_request_type_bits = { .recipient = usb_bm_request_type_recipient_device,
-                                  .type = usb_bm_request_type_type_standard,
-                                  .direction = usb_bm_request_type_direction_dev_to_host
-                                  },
+        .bm_request_type_bits = {
+                .recipient = usb_bm_request_type_recipient_device,
+                .type = usb_bm_request_type_type_standard,
+                .direction = usb_bm_request_type_direction_dev_to_host
+        },
         .b_request = usb_setup_req_b_req_type_get_descriptor,
         .w_value = usb_descriptor_types_device << 8,
         .w_index = 0,
@@ -193,7 +196,8 @@ void usb_enum_device(usb_device_t * device) {
 
     // Set new address
     setup_request = (usb_setup_data_t) {
-            .bm_request_type_bits = { .recipient = usb_bm_request_type_recipient_device,
+            .bm_request_type_bits = {
+                    .recipient = usb_bm_request_type_recipient_device,
                     .type = usb_bm_request_type_type_standard,
                     .direction = usb_bm_request_type_direction_host_to_dev
             },
@@ -208,7 +212,8 @@ void usb_enum_device(usb_device_t * device) {
 
     // Get full device descriptor
     setup_request = (usb_setup_data_t) {
-            .bm_request_type_bits = { .recipient = usb_bm_request_type_recipient_device,
+            .bm_request_type_bits = {
+                    .recipient = usb_bm_request_type_recipient_device,
                     .type = usb_bm_request_type_type_standard,
                     .direction = usb_bm_request_type_direction_dev_to_host
             },
@@ -225,7 +230,8 @@ void usb_enum_device(usb_device_t * device) {
 
     // Get first 9 bytes of configuration descriptor
     setup_request = (usb_setup_data_t) {
-            .bm_request_type_bits = { .recipient = usb_bm_request_type_recipient_device,
+            .bm_request_type_bits = {
+                    .recipient = usb_bm_request_type_recipient_device,
                     .type = usb_bm_request_type_type_standard,
                     .direction = usb_bm_request_type_direction_dev_to_host
             },
@@ -242,9 +248,10 @@ void usb_enum_device(usb_device_t * device) {
     device->interface_count = ((usb_configuration_descriptor_t *) usb_ctrl_buffer)->b_num_interfaces;
 
 
-    // Set configured
+    // Set configured (Select first configuration)
     setup_request = (usb_setup_data_t) {
-            .bm_request_type_bits = { .recipient = usb_bm_request_type_recipient_device,
+            .bm_request_type_bits = {
+                    .recipient = usb_bm_request_type_recipient_device,
                     .type = usb_bm_request_type_type_standard,
                     .direction = usb_bm_request_type_direction_host_to_dev
             },
@@ -255,7 +262,54 @@ void usb_enum_device(usb_device_t * device) {
     };
     usb_send_control_transfer(device->address, &setup_request, NULL);
 
-    // TODO: parse configuration and  each interface
+    // Parse configuration and interfaces to find the HID interface
+    bool supported_interface_found = false;
+    bool interrupt_out_endpoint_found = false;
+    uint8_t * parser_ptr = usb_ctrl_buffer + 9; // Configuration descriptor is 9 bytes TODO: move to define
+    while (parser_ptr < usb_ctrl_buffer + ((usb_configuration_descriptor_t *)usb_ctrl_buffer)->w_total_length) {
+        // Check whether it is an interface descriptor, endpoint descriptor or another descriptor
+        if (parser_ptr[USB_DESCRIPTOR_B_DESCRIPTOR_TYPE_OFFSET] == usb_descriptor_types_interface && !supported_interface_found) {
+            // It is an interface descriptor
+            usb_interface_descriptor_t * interface_descriptor = (usb_interface_descriptor_t *) parser_ptr;
+
+            // Check if the class is HID or not
+            if (interface_descriptor->b_interface_class == USB_CLASS_CODE_HID) {
+                // HID class
+                device->interface_number_hid = interface_descriptor->b_interface_number;
+                supported_interface_found = true;
+            }
+        }
+        else if (parser_ptr[USB_DESCRIPTOR_B_DESCRIPTOR_TYPE_OFFSET] == usb_descriptor_types_endpoint && !interrupt_out_endpoint_found) {
+            // It is an endpoint descriptor
+            usb_endpoint_descriptor_t * endpoint_descriptor = (usb_endpoint_descriptor_t *) parser_ptr;
+            // Check if it is an Interrupt IN endpoint
+            if (endpoint_descriptor->bm_attributes_bits.transfer_type == usb_data_flow_types_interrupt_transfer && endpoint_descriptor->b_endpoint_address_bits.direction == 1) {
+                device->interrupt_out_endpoint_number = endpoint_descriptor->b_endpoint_address_bits.endpoint_number;
+                device->interrupt_out_endpoint_polling_interval = endpoint_descriptor->b_interval;
+                device->interrupt_out_endpoint_max_packet_size = endpoint_descriptor->w_max_packet_size & USB_ENDPOINT_DESCRIPTOR_MAX_PACKET_SIZE_BITS;
+                interrupt_out_endpoint_found = true;
+            }
+        }
+
+        if(interrupt_out_endpoint_found && supported_interface_found) {
+            // Stop parsing
+            break;
+        }
+        else {
+            // Go to the next descriptor
+            parser_ptr += parser_ptr[USB_DESCRIPTOR_B_LENGTH_OFFSET]; // Increase by the descriptors length
+        }
+    }
+
+    if (supported_interface_found && interrupt_out_endpoint_found) {
+        // TODO: load HID driver
+        uart_puts(uart0_hw, "hid found");
+        usb_host_hid_init(device);
+    }
+    else {
+        // TODO: error: device is not hid?
+        uart_puts(uart0_hw, "hid not found");
+    }
 }
 
 /**
@@ -303,7 +357,7 @@ static void usb_setup_send(uint8_t device_address, usb_setup_data_t *setup_packe
  * @param setup_packet
  * @param data
  */
-static void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_packet, uint8_t * data) {
+void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_packet, uint8_t * data) {
     // Use endpoint 0 for control transfers
     struct endpoint_struct * endpoint = &endpoints[0];
 
@@ -335,9 +389,9 @@ static void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *
  * @param buffer_len
  * @param direction
  */
-static void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpoint, uint16_t endpoint_number,uint8_t * buffer, uint16_t buffer_len, uint8_t direction) {
+void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpoint, uint16_t endpoint_number,uint8_t * buffer, uint16_t buffer_len, uint8_t direction) {
     // Endpoint init
-    usb_endpoint_init(endpoint, device_address, endpoint_number, direction, endpoint->w_max_packet_size, endpoint->transfer_type, 0);
+    usb_endpoint_init(endpoint, device_address, endpoint_number, direction, endpoint->w_max_packet_size, endpoint->transfer_type, endpoint->interrupt_interval);
 
     endpoint->len = 0;
     endpoint->total_len = buffer_len;
@@ -378,7 +432,15 @@ static void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint) {
 
     buffer_control_val |= endpoint->pid ? USB_BUFF_CTRL_BUFF0_DATA_PID_BIT : 0;
     // TODO: toggle pid
-    endpoint->pid ^= 1;
+    if (endpoint->transfer_size == 0) {
+        endpoint->pid ^= 1;
+    }
+    else {
+        uint32_t packet_count = 1 + ((endpoint->transfer_size - 1) / endpoint->w_max_packet_size);
+        if (packet_count & 0x01) {
+            endpoint->pid ^= 1;
+        }
+    }
 
     if (endpoint->last_buffer)
         buffer_control_val |= USB_BUFF_CTRL_BUFF0_LAST_BIT;
@@ -397,7 +459,7 @@ static void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint) {
  * @param transfer_type
  * @param b_interval
  */
-static void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address, uint8_t endpoint_number, uint8_t direction, uint16_t w_max_packet_size, usb_data_flow_types_t transfer_type, uint8_t b_interval) {
+void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address, uint8_t endpoint_number, uint8_t direction, uint16_t w_max_packet_size, usb_data_flow_types_t transfer_type, uint8_t b_interval) {
     endpoint->device_address = device_address;
     endpoint->endpoint_number = endpoint_number;
 
@@ -412,35 +474,18 @@ static void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_a
 
     uint32_t dpsram_offset = (uintptr_t)endpoint->dps_data_buffer ^ (uintptr_t)usb_host_dpsram;
 
-    // Endpoint type in the ep ctrl reg uses a different numbering
-    uint8_t endpoint_control_reg_transfer_type;
-    switch (transfer_type) {
-        case usb_data_flow_types_control_transfer:
-            endpoint_control_reg_transfer_type = 0;
-            break;
-        case usb_data_flow_types_bulk_transfer:
-            endpoint_control_reg_transfer_type = 2;
-            break;
-        case usb_data_flow_types_interrupt_transfer:
-            endpoint_control_reg_transfer_type = 3;
-            break;
-        case usb_data_flow_types_isochronous_transfer:
-            endpoint_control_reg_transfer_type = 1;
-            break;
-    }
-
     *(endpoint->endpoint_control) = USB_EP_CTRL_ENABLE_BIT |
                                     USB_EP_CTRL_INT_BUFFER_BIT |
-                                    (endpoint_control_reg_transfer_type << USB_EP_CTRL_TYPE_LSB) |
+                                    (transfer_type << USB_EP_CTRL_TYPE_LSB) |
                                     (dpsram_offset) |
                                     (b_interval ? (b_interval - 1) << USB_EP_CTRL_HOST_INT_INTERVAL_LSB : 0);
 
     if (b_interval) {
         // This is an interrupt endpoint
         // Set up interrupt endpoint address control register:
-        usb_hw->host_int_ep_addr_ctrl[endpoint->interrupt_number] = device_address | (endpoint_number << USB_ADDR_ENDPN_ENDPOINT_LSB);
+        usb_hw->host_int_ep_addr_ctrl[endpoint->interrupt_number - 1] = device_address | (endpoint_number << USB_ADDR_ENDPN_ENDPOINT_LSB);
 
-        // Finally, enable interrupt that endpoint
+        // Enable interrupt
         usb_hw->int_ep_ctrl = 1 << endpoint->interrupt_number;
     }
 }
@@ -538,4 +583,14 @@ static void handle_transfer_complete(void) {
     if (endpoint->setup) {
         usb_endpoint_transfer_complete(endpoint);
     }
+}
+
+/**
+ * Returns the endpoint_struct pointer to the selected endpoint
+ *
+ * @param endpoint_number
+ * @return
+ */
+struct endpoint_struct * usb_get_endpoint(uint8_t endpoint_number) {
+    return (struct endpoint_struct *)&endpoints[endpoint_number];
 }

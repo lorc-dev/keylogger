@@ -7,6 +7,7 @@
 #include "include/drivers/ssd1306.h"
 #include "include/hardware/timer.h"
 #include "include/hardware/usb.h"
+#include "include/drivers/usb_host_hid.h"
 
 #define LED 25
 
@@ -75,20 +76,20 @@ int main()
 
     ssd1306_display(&ssd1306);*/
 
-    usb_device_t test_dev_usb;
-    usb_init(&test_dev_usb);
+    usb_init();
 
 	while(1) {
 //	    spi_write(spi0_hw, &test,5);
 //        uart_puts(uart0_hw, "Dit is een test");
 //	    uart_write(uart0_hw,&test,5);
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
+        hid_task();
         dev_connected();
 
 		sio_put(LED,1);
-        wait_ms(500);   //delay(150);
+        //wait_ms(500);   //delay(150);
         sio_put(LED,0);
-        wait_ms(500);   //delay(150);
+        //wait_ms(500);   //delay(150);
 	}
 
 	return 0;

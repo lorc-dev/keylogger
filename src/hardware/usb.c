@@ -14,7 +14,7 @@
 #include "../include/drivers/usb_host_hid.h"
 
 struct endpoint_struct endpoints[16];
-static uint8_t usb_ctrl_buffer[256];
+static uint8_t usb_ctrl_buffer[64];
 usb_device_t usb_device;    // Only one usb device
 
 bool dev_con = false; // TODO: remove temp var
@@ -30,7 +30,14 @@ void dev_connected(void){
 /**
  * Initializes the USB controller in host mode
  */
-void usb_init(usb_device_t * device) {
+void usb_init(void) {
+    // Init usb_device struct
+    usb_device.address = 0;       // Standard address
+    usb_device.max_packet_size_ep_0 = 64;
+    usb_device.connected = false;
+    usb_device.enumerated = false;
+    usb_device.hid_driver_loaded = false;
+
     // Reset USB controller
     reset_subsystem(RESETS_RESET_USBCTRL);
     unreset_subsystem_wait(RESETS_RESET_USBCTRL);
@@ -73,6 +80,7 @@ static void usb_init_endpoints(void) {
     endpoints[0].buffer_control = &usb_host_dpsram->epx_buff_ctrl;
     endpoints[0].endpoint_control = &usb_host_dpsram->epx_ctrl;
     endpoints[0].dps_data_buffer = &usb_host_dpsram->data_buffers[0];
+    endpoints[0].w_max_packet_size = usb_device.max_packet_size_ep_0;
     endpoints[0].interrupt_number = 0;
     endpoints[0].interrupt_interval = 0;
 
@@ -115,6 +123,7 @@ void usb_irq(void) {
     if (status & USB_INTS_BUFF_STATUS_BIT)
     {
         usb_handle_buff_status();
+        //uart_puts(uart0_hw, "buff");
     }
 
     if (status & USB_INTS_STALL_BIT)
@@ -140,6 +149,7 @@ void usb_irq(void) {
 }
 
 extern void isr_irq5(void) {
+    uart_puts(uart0_hw, "!*!");
     usb_irq();
 }
 
@@ -159,6 +169,7 @@ static inline dev_speed_t device_speed(void) {
  */
 void usb_device_attach(usb_device_t * device) {
     dev_con = true;
+    device->connected = true;
 }
 
 /**
@@ -167,6 +178,11 @@ void usb_device_attach(usb_device_t * device) {
  * @param device
  */
 void usb_device_detach(usb_device_t * device) {
+    usb_device.address = 0;       // Standard address
+    usb_device.max_packet_size_ep_0 = 64;
+    usb_device.connected = false;
+    usb_device.enumerated = false;
+    usb_device.hid_driver_loaded = false;
     dev_con = false;
 }
 
@@ -310,6 +326,7 @@ void usb_enum_device(usb_device_t * device) {
         // TODO: error: device is not hid?
         uart_puts(uart0_hw, "hid not found");
     }
+    device->enumerated = true;
 }
 
 /**
@@ -376,8 +393,8 @@ void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_p
     while(endpoint->active);
 
     // TODO: Check if failed or stalled
-
 }
+
 
 /**
  * Start a transaction
@@ -390,17 +407,21 @@ void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_p
  * @param direction
  */
 void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpoint, uint16_t endpoint_number,uint8_t * buffer, uint16_t buffer_len, uint8_t direction) {
-    // Endpoint init
-    usb_endpoint_init(endpoint, device_address, endpoint_number, direction, endpoint->w_max_packet_size, endpoint->transfer_type, endpoint->interrupt_interval);
+   // Endpoint init
+   if (endpoint->device_address != device_address || direction != endpoint->receive) {
+       usb_endpoint_init(endpoint, device_address, endpoint_number, direction, endpoint->w_max_packet_size,
+                         endpoint->transfer_type, endpoint->interrupt_interval);
+   }
 
-    endpoint->len = 0;
-    endpoint->total_len = buffer_len;
-    endpoint->transfer_size = min(buffer_len, max(endpoint->w_max_packet_size, 64));
-    endpoint->mem_data_buffer = buffer;
+   endpoint->active = true;
+   endpoint->transferred_bytes = 0;
+   endpoint->total_len = buffer_len;
+   endpoint->transfer_size = min(buffer_len, max(endpoint->w_max_packet_size, 64));
+   endpoint->mem_data_buffer = buffer;
 
-    // Check if it is the last buffer
-    endpoint->last_buffer = (endpoint->len + endpoint->transfer_size == endpoint->total_len);
-    endpoint->buffer_selector = 0;
+   // Check if it is the last buffer
+   endpoint->last_buffer = ((endpoint->transferred_bytes + endpoint->transfer_size) >= endpoint->total_len);
+   endpoint->buffer_selector = 0;
 
     usb_endpoint_transfer_buffer(endpoint);
 
@@ -421,31 +442,37 @@ void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpo
  *
  * @param endpoint
  */
-static void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint) {
-    uint32_t buffer_control_val = endpoint->transfer_size | USB_BUFF_CTRL_AVAILABLE_0_BIT;
+void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint) {
+    uint32_t buffer_control_val = endpoint->transfer_size;
 
     if (endpoint->receive == false) {
         // Copy data from the temp buffer in mem to the hardware buffer
-        memcpy(endpoint->dps_data_buffer, &endpoint->mem_data_buffer[endpoint->len], endpoint->transfer_size);
+        memcpy(endpoint->dps_data_buffer, &endpoint->mem_data_buffer[endpoint->transferred_bytes], endpoint->transfer_size);
         buffer_control_val |= USB_BUFF_CTRL_BUFF0_FULL_BIT;
     }
 
+    // Set PID (DATA0 or DATA1)
     buffer_control_val |= endpoint->pid ? USB_BUFF_CTRL_BUFF0_DATA_PID_BIT : 0;
-    // TODO: toggle pid
+
+    // Set the PID for the next transfer
     if (endpoint->transfer_size == 0) {
-        endpoint->pid ^= 1;
+        endpoint->pid ^= 1u;
     }
     else {
         uint32_t packet_count = 1 + ((endpoint->transfer_size - 1) / endpoint->w_max_packet_size);
         if (packet_count & 0x01) {
-            endpoint->pid ^= 1;
+            endpoint->pid ^= 1u;
         }
     }
 
+    // Check if it is the last buffer, if so, set th last buffer bit
     if (endpoint->last_buffer)
         buffer_control_val |= USB_BUFF_CTRL_BUFF0_LAST_BIT;
 
+    // Copy the value to the buffer control register, this will start the transfer
     *(endpoint->buffer_control) = buffer_control_val;
+    // Set available bit when the other bits are already set and stable
+    *(endpoint->buffer_control) |= USB_BUFF_CTRL_AVAILABLE_0_BIT;
 }
 
 /**
@@ -462,17 +489,16 @@ static void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint) {
 void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address, uint8_t endpoint_number, uint8_t direction, uint16_t w_max_packet_size, usb_data_flow_types_t transfer_type, uint8_t b_interval) {
     endpoint->device_address = device_address;
     endpoint->endpoint_number = endpoint_number;
+    endpoint->interrupt_interval = b_interval;
 
     endpoint->receive = direction;
 
-    endpoint->pid = (endpoint_number == 0) ? 1u : 0u; // TODO: check (from _hw_endpoint_init())
+    endpoint->pid = (endpoint_number == 0) ? 1u : 0u;
     endpoint->w_max_packet_size = w_max_packet_size;
     endpoint->transfer_type = transfer_type;
 
-    endpoint->active = true;
 
-
-    uint32_t dpsram_offset = (uintptr_t)endpoint->dps_data_buffer ^ (uintptr_t)usb_host_dpsram;
+    uint32_t dpsram_offset = (uintptr_t)((uintptr_t)endpoint->dps_data_buffer ^ (uintptr_t)usb_host_dpsram);
 
     *(endpoint->endpoint_control) = USB_EP_CTRL_ENABLE_BIT |
                                     USB_EP_CTRL_INT_BUFFER_BIT |
@@ -485,7 +511,7 @@ void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address,
         // Set up interrupt endpoint address control register:
         usb_hw->host_int_ep_addr_ctrl[endpoint->interrupt_number - 1] = device_address | (endpoint_number << USB_ADDR_ENDPN_ENDPOINT_LSB);
 
-        // Enable interrupt
+        // Enable the interrupt endpoint
         usb_hw->int_ep_ctrl = 1 << endpoint->interrupt_number;
     }
 }
@@ -499,10 +525,17 @@ static void usb_handle_buff_status(void) {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1ul << (i*2);
         if (completed_buffers & bit) {
+            // Clear the bit (write to clear register)
             usb_hw->buff_status = bit;
             bool done = usb_endpoint_transfer_continue(&endpoints[i]);
             if (done) {
-                usb_endpoint_transfer_complete(&endpoints[i]);
+                usb_endpoint_reset(&endpoints[i]);
+
+                // TODO: refactor
+                if (usb_device.hid_driver_loaded && endpoints[i].interrupt_number == usb_device.local_interrupt_endpoint_number) {
+                    // Call hid report handler
+                   usb_host_hid_report_received_handler();
+                }
             }
         }
     }
@@ -517,43 +550,48 @@ static void usb_handle_buff_status(void) {
 static bool usb_endpoint_transfer_continue(struct endpoint_struct *endpoint) {
     // Get hardware buffer state and extract the amount of transferred bytes
     uint32_t buffer_ctrl = *(endpoint->buffer_control);
-    uint16_t transferred_bytes = buffer_ctrl & USB_BUFF_CTRL_BUFF0_TRANSFER_LENGTH_BITS;
 
     // RP2040-E4 bug
     // Summary:     USB host writes to upper half of buffer status in single buffered mode
     // Workaround:  Shift endpoint control register to the right by 16 bits if the buffer selector is BUF1. You can use
     //              BUFF_CPU_SHOULD_HANDLE find the value of the buffer selector when the buffer was marked as done.
-    if (endpoint->buffer_selector == 1) {
+     if (endpoint->buffer_selector == 1) {
         buffer_ctrl = buffer_ctrl >> 16;
         *(endpoint->buffer_control) = buffer_ctrl;
     }
     endpoint->buffer_selector ^= 1ul;   // Flip buffer selector
 
+    uint16_t transferred_bytes = buffer_ctrl & USB_BUFF_CTRL_BUFF0_TRANSFER_LENGTH_BITS;
+
+
     // Update the bytes sent or received
     if (endpoint->receive == false) {
         // Update bytes sent
-        endpoint->len += transferred_bytes;
+        endpoint->transferred_bytes += transferred_bytes;
     }
     else {
         // Copy received data to the memory buffer at the correct index
-        memcpy(&endpoint->mem_data_buffer[endpoint->len], endpoint->dps_data_buffer, transferred_bytes);
-        endpoint->len += transferred_bytes;
+        memcpy(&endpoint->mem_data_buffer[endpoint->transferred_bytes], endpoint->dps_data_buffer, transferred_bytes);
+        endpoint->transferred_bytes += transferred_bytes;
     }
 
-    // Check if less data is sent than the transfer size
-    if (endpoint->receive && transferred_bytes < endpoint->transfer_size) {
+
+    // Check if less data is sent than the transfer size (=> last packet)
+    if (endpoint->receive && (transferred_bytes < endpoint->transfer_size)) {
         // Update the total length
-        endpoint->total_len = endpoint->len;
+        endpoint->total_len = endpoint->transferred_bytes;
     }
 
-    uint16_t remaining_bytes = endpoint->total_len - endpoint->len;
+    uint16_t remaining_bytes = endpoint->total_len - endpoint->transferred_bytes;
     endpoint->transfer_size = min(remaining_bytes, max(endpoint->w_max_packet_size, 64));
-    endpoint->last_buffer = (endpoint->len + endpoint->transfer_size == endpoint->total_len);
+    endpoint->last_buffer = ((endpoint->transferred_bytes + endpoint->transfer_size) >= endpoint->total_len);
 
     // Done
     if (remaining_bytes == 0) {
-        usb_endpoint_transfer_buffer(endpoint);
         return true;
+    }
+    else {
+        usb_endpoint_transfer_buffer(endpoint);
     }
 
     // Not done yet
@@ -565,10 +603,10 @@ static bool usb_endpoint_transfer_continue(struct endpoint_struct *endpoint) {
  *
  * @param endpoint
  */
-static void usb_endpoint_transfer_complete(struct endpoint_struct *endpoint) {
+static void usb_endpoint_reset(struct endpoint_struct *endpoint) {
     // Reset endpoint
     endpoint->total_len = 0;
-    endpoint->len = 0;
+    endpoint->transferred_bytes = 0;
     endpoint->transfer_size = 0;
     endpoint->mem_data_buffer = 0;
     endpoint->active = false;
@@ -581,7 +619,7 @@ static void usb_endpoint_transfer_complete(struct endpoint_struct *endpoint) {
 static void handle_transfer_complete(void) {
     struct endpoint_struct * endpoint = &endpoints[0];
     if (endpoint->setup) {
-        usb_endpoint_transfer_complete(endpoint);
+        usb_endpoint_reset(endpoint);
     }
 }
 

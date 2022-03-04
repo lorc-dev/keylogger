@@ -275,8 +275,14 @@ typedef enum {
 } usb_data_flow_types_t;
 
 typedef struct {
+    bool connected;
+    bool enumerated;
+    bool hid_driver_loaded;
+
     dev_speed_t speed;
     uint8_t address;
+
+    uint8_t local_interrupt_endpoint_number;
 
     // Device descriptor
     uint16_t vendor_id;
@@ -405,7 +411,8 @@ struct endpoint_struct {
 
     usb_data_flow_types_t transfer_type;
     uint16_t w_max_packet_size;
-    uint16_t len;
+    uint16_t transferred_bytes;
+    //uint16_t remaining_bytes;
     uint16_t total_len;
     uint16_t transfer_size;
     uint8_t interrupt_interval;
@@ -422,7 +429,7 @@ struct endpoint_struct {
 ///////////////////////////
 /// Function prototypes ///
 ///////////////////////////
-void usb_init(usb_device_t * device);
+void usb_init(void);
 static void usb_init_endpoints(void);
 static void usb_irq(void);
 static inline dev_speed_t device_speed(void);
@@ -435,8 +442,8 @@ void usb_endpoint_init(struct endpoint_struct *endpoint, uint8_t device_address,
 void usb_endpoint_transfer(uint8_t device_address, struct endpoint_struct *endpoint, uint16_t endpoint_number,uint8_t * buffer, uint16_t buffer_len, uint8_t direction);
 void usb_send_control_transfer(uint8_t device_address, usb_setup_data_t *setup_packet, uint8_t * data);
 static bool usb_endpoint_transfer_continue(struct endpoint_struct *endpoint);
-static void usb_endpoint_transfer_complete(struct endpoint_struct *endpoint);
-static void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint);
+static void usb_endpoint_reset(struct endpoint_struct *endpoint);
+void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint);
 static void usb_handle_buff_status(void);
 void dev_connected(void); // TODO: remove temp function
 static void handle_transfer_complete(void);

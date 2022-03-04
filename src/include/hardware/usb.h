@@ -433,8 +433,8 @@ void usb_init(void);
 static void usb_init_endpoints(void);
 static void usb_irq(void);
 static inline dev_speed_t device_speed(void);
-void usb_device_attach(usb_device_t * device);
-void usb_device_detach(usb_device_t * device);
+void usb_device_attach_handler(void);
+void usb_device_detach_handler(void);
 void usb_enum_device(usb_device_t * device);
 static void usb_reset_bus(void);
 static void usb_setup_send(uint8_t device_address, usb_setup_data_t *setup_packet);
@@ -445,7 +445,6 @@ static bool usb_endpoint_transfer_continue(struct endpoint_struct *endpoint);
 static void usb_endpoint_reset(struct endpoint_struct *endpoint);
 void usb_endpoint_transfer_buffer(struct endpoint_struct * endpoint);
 static void usb_handle_buff_status(void);
-void dev_connected(void); // TODO: remove temp function
 static void handle_transfer_complete(void);
 struct endpoint_struct * usb_get_endpoint(uint8_t endpoint_number);
 

@@ -12,20 +12,12 @@
 #include "../include/hardware/timer.h"
 #include "../include/hardware/uart.h"   // TODO: remove temp import
 #include "../include/drivers/usb_host_hid.h"
+#include "../include/events/events.h"
 
 struct endpoint_struct endpoints[16];
 static uint8_t usb_ctrl_buffer[64];
 usb_device_t usb_device;    // Only one usb device
 
-bool dev_con = false; // TODO: remove temp var
-
-// TODO: remove temp function
-void dev_connected(void){
-    if(dev_con){
-        dev_con = false;
-        usb_enum_device(&usb_device);
-    }
-}
 
 /**
  * Initializes the USB controller in host mode
@@ -102,13 +94,12 @@ void usb_irq(void) {
     // Device connected or disconnected
     if (status & USB_INTS_HOST_CONN_DIS_BIT) {
         if (device_speed()) {
-            uart_puts(uart0_hw, "con");
             // USB device connected
-            usb_device_attach(&usb_device);
+            event_add(event_usb_device_attached, usb_device_attach_handler);
         }
         else {
             // USB device disconnected
-            usb_device_detach(&usb_device);
+            event_add(event_usb_device_detached, usb_device_detach_handler);
         }
         // Clear interrupt
         usb_hw->sie_status = USB_SIE_STATUS_SPEED_BITS;
@@ -167,9 +158,9 @@ static inline dev_speed_t device_speed(void) {
  *
  * @param device
  */
-void usb_device_attach(usb_device_t * device) {
-    dev_con = true;
-    device->connected = true;
+void usb_device_attach_handler(void) {
+    usb_device.connected = true;
+    usb_enum_device(&usb_device);
 }
 
 /**
@@ -177,13 +168,12 @@ void usb_device_attach(usb_device_t * device) {
  *
  * @param device
  */
-void usb_device_detach(usb_device_t * device) {
+void usb_device_detach_handler(void) {
     usb_device.address = 0;       // Standard address
     usb_device.max_packet_size_ep_0 = 64;
     usb_device.connected = false;
     usb_device.enumerated = false;
     usb_device.hid_driver_loaded = false;
-    dev_con = false;
 }
 
 /**
@@ -318,13 +308,11 @@ void usb_enum_device(usb_device_t * device) {
     }
 
     if (supported_interface_found && interrupt_out_endpoint_found) {
-        // TODO: load HID driver
-        uart_puts(uart0_hw, "hid found");
-        usb_host_hid_init(device);
+        // Load HID driver
+        event_add(event_usb_host_hid_load_driver, usb_host_hid_init_handler);
     }
     else {
         // TODO: error: device is not hid?
-        uart_puts(uart0_hw, "hid not found");
     }
     device->enumerated = true;
 }
@@ -531,10 +519,10 @@ static void usb_handle_buff_status(void) {
             if (done) {
                 usb_endpoint_reset(&endpoints[i]);
 
-                // TODO: refactor
+                // Check if this is for the HID driver
                 if (usb_device.hid_driver_loaded && endpoints[i].interrupt_number == usb_device.local_interrupt_endpoint_number) {
                     // Call hid report handler
-                   usb_host_hid_report_received_handler();
+                    event_add(event_usb_host_hid_report_available, usb_host_hid_report_received_handler);
                 }
             }
         }

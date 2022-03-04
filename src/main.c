@@ -8,6 +8,7 @@
 #include "include/hardware/timer.h"
 #include "include/hardware/usb.h"
 #include "include/drivers/usb_host_hid.h"
+#include "include/events/events.h"
 
 #define LED 25
 
@@ -26,6 +27,8 @@ int main()
     runtime_init(); // TODO: Call runtime_init() from crt0.s before main ?
 
 	gpio_enable();
+
+    event_init_queue();
 
 	// SIO
     gpio_set_function(25, GPIO_FUNC_SIO);
@@ -83,8 +86,7 @@ int main()
 //        uart_puts(uart0_hw, "Dit is een test");
 //	    uart_write(uart0_hw,&test,5);
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
-        hid_task();
-        dev_connected();
+        event_task();
 
 		sio_put(LED,1);
         //wait_ms(500);   //delay(150);

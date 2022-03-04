@@ -10,59 +10,35 @@
 #include "../include/hardware/usb.h"
 #include "../include/hardware/uart.h" // TODO: remove temp header
 
-
-usb_host_hid_keyboard_t hid_keyboard;
+extern usb_device_t usb_device;
 static uint8_t usb_interrupt_out_buffer[64];
 
-bool hid_received = false;
-bool init_hid = false;
-
-
-void hid_task(){
-    if (init_hid) {
-        usb_device_t * device = hid_keyboard.device;
-        init_hid = false;
-
-        // Select the boot protocol instead of the default report protocol
-        usb_host_hid_set_protocol(device, false);
-
-        // Setup Interrupt out endpoint
-        struct endpoint_struct * interrupt_out_endpoint = usb_get_endpoint(1);
-        device->local_interrupt_endpoint_number = 1;
-
-        usb_endpoint_init(interrupt_out_endpoint,
-                          device->address,
-                          device->interrupt_out_endpoint_number,
-                          1,
-                          device->interrupt_out_endpoint_max_packet_size,
-                          usb_data_flow_types_interrupt_transfer,
-                          device->interrupt_out_endpoint_polling_interval
-        );
-
-        usb_endpoint_transfer(device->address, interrupt_out_endpoint, device->interrupt_out_endpoint_number,usb_interrupt_out_buffer,device->interrupt_out_endpoint_max_packet_size,1);
-        device->hid_driver_loaded = true;
-
-    }
-    else if (hid_received) {
-        hid_received = false;
-        uart_write(uart0_hw, usb_interrupt_out_buffer, 3);
-
-        usb_device_t * device = hid_keyboard.device;
-        struct endpoint_struct * interrupt_out_endpoint = usb_get_endpoint(1);
-
-        usb_endpoint_transfer(device->address, interrupt_out_endpoint, device->interrupt_out_endpoint_number,usb_interrupt_out_buffer,device->interrupt_out_endpoint_max_packet_size,1);
-    }
-}
 
 /**
  * Initializes a device with an HID interface.
- * Setups interrupt in request
- *
- * @param device
+ * Setups interrupt in request.
  */
-void usb_host_hid_init(usb_device_t * device) {
-    hid_keyboard.device = device;
-    init_hid = true;
+void usb_host_hid_init_handler(void) {
+    // Select the boot protocol instead of the default report protocol
+    usb_host_hid_set_protocol(&usb_device, false);
+
+    // Setup Interrupt out endpoint
+    struct endpoint_struct * interrupt_out_endpoint = usb_get_endpoint(1);
+    usb_device.local_interrupt_endpoint_number = 1;
+
+    usb_endpoint_init(interrupt_out_endpoint,
+                      usb_device.address,
+                      usb_device.interrupt_out_endpoint_number,
+                      1,
+                      usb_device.interrupt_out_endpoint_max_packet_size,
+                      usb_data_flow_types_interrupt_transfer,
+                      usb_device.interrupt_out_endpoint_polling_interval
+    );
+
+    usb_endpoint_transfer(usb_device.address, interrupt_out_endpoint,
+                          usb_device.interrupt_out_endpoint_number,usb_interrupt_out_buffer,
+                          usb_device.interrupt_out_endpoint_max_packet_size,1);
+    usb_device.hid_driver_loaded = true;
 }
 
 /**
@@ -87,6 +63,16 @@ static void usb_host_hid_set_protocol(usb_device_t * device, bool report_protoco
     usb_send_control_transfer(device->address, &setup_request, NULL);
 }
 
+/**
+ * Called when a new report is available
+ */
 void usb_host_hid_report_received_handler(void) {
-   hid_received = true;
+    uart_write(uart0_hw, usb_interrupt_out_buffer, 3);  // TODO: remove temp debug uart write
+
+    struct endpoint_struct * interrupt_out_endpoint = usb_get_endpoint(1);
+
+    // Schedule a new report
+    usb_endpoint_transfer(usb_device.address, interrupt_out_endpoint,
+                          usb_device.interrupt_out_endpoint_number,usb_interrupt_out_buffer,
+                          usb_device.interrupt_out_endpoint_max_packet_size,1);
 }

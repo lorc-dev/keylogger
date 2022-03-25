@@ -6,7 +6,11 @@
 #define KEYLOGGER_GPIO_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "addressmap.h"
+
+#define GPIO_COUNT  30
+#define GPIO_EVENT_TYPE_COUNT   4
 
 // See table 289
 #define GPIO_FUNC_SPI   1
@@ -30,6 +34,14 @@
 #define PADS_BANK0_GPIO_DRIVE_2mA   (0ul<<4)
 #define PADS_BANK0_GPIO_IE          (1ul<<6)    // Input enable
 #define PADS_BANK0_GPIO_OD          (1ul<<7)    // Output disable
+
+
+typedef enum {
+    gpio_irq_event_level_low = 1,
+    gpio_irq_event_level_high = 2,
+    gpio_irq_event_edge_low = 4,
+    gpio_irq_event_edge_high = 8,
+} gpio_irq_event_t;
 
 // See table 293
 typedef struct {
@@ -62,5 +74,9 @@ typedef struct {
 void gpio_disable(void);
 void gpio_enable(void);
 void gpio_set_function(uint8_t gpio, uint8_t function);
+void gpio_set_pullup(uint8_t gpio, bool enable);
+void gpio_set_pulldown(uint8_t gpio, bool enable);
+void gpio_irq_handler(void);
+void gpio_set_irq_enabled(uint8_t gpio, gpio_irq_event_t event, void (*callback) (void));
 
 #endif //KEYLOGGER_GPIO_H

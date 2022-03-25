@@ -14,7 +14,7 @@
  * By default it will be in master mode
  *
  * @param spi
- * @param clk_rate
+ * @param clk_rate clk freq in Hz
  */
 void spi_init(spi_hw_t *spi, uint32_t clk_rate) {
     // Bring the spi controller in a know state
@@ -132,7 +132,7 @@ static inline bool spi_is_busy(spi_hw_t *spi) {
  * @param len
  */
 void spi_write(spi_hw_t *spi, uint8_t *src, uint32_t len) {
-    // Read len bytes into src
+    // Write len bytes into src
     for (uint32_t i = 0; i < len; i++) {
         while (!spi_is_writable(spi));
         spi->sspdr = (uint32_t)*src++;
@@ -147,6 +147,17 @@ void spi_write(spi_hw_t *spi, uint8_t *src, uint32_t len) {
     while (spi_is_readable(spi))
         spi->sspdr;
 }
+
+/**
+ * Write one byte, don't discards received data
+ *
+ * @param spi
+ * @param byte
+ */
+void spi_write_byte(spi_hw_t *spi, uint8_t byte) {
+    spi_write(spi, &byte, 1);
+}
+
 
 /**
  * Read len bytes from the receive FIFO to the destination buffer.

@@ -71,6 +71,7 @@ static inline bool spi_is_writable(spi_hw_t *spi);
 static inline bool spi_is_readable(spi_hw_t *spi);
 static inline bool spi_is_busy(spi_hw_t *spi);
 void spi_write(spi_hw_t *spi, uint8_t *src, uint32_t len);
+void spi_write_byte(spi_hw_t *spi, uint8_t byte);
 void spi_read(spi_hw_t *spi, uint8_t repeat_tx_data, uint8_t *dst, uint32_t len);
 void spi_write_read(spi_hw_t *spi, uint8_t *src, uint8_t *dst, uint32_t len);
 

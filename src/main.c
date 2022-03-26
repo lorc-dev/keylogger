@@ -10,17 +10,9 @@
 #include "include/drivers/usb_host_hid.h"
 #include "include/events/events.h"
 #include "include/drivers/sd_spi.h"
+#include "include/storage/storage.h"
 
 #define LED 25
-
-void delay(int n) // no particular timing
-{
-	for(int i =0 ; i< n; i++) {
-		for(int j = 0; j< 1000; j++) {
-			asm volatile ("nop");
-		}
-	}
-}
 
 void toggle(void) {
     sio_toggle(LED);
@@ -96,11 +88,11 @@ int main()
 //    gpio_set_irq_enabled(12,gpio_irq_event_edge_low, toggle);
 
     bool sd_init = false;
-    uint8_t sd_buff[512];
+    uint8_t sd_buff[600];
 
-    for(int i = 0; i < 512; i++) {
-        sd_buff[i] = (uint8_t)i;
-    }
+    sd_spi_t sd;
+    storage_t storage;
+    uint8_t temp[600] = "On ARM-based systems you frequently cannot address a 32-bit word that is not aligned to a 4-byte boundary (as your error is telling you). On x86 you can access non-aligned data, however there is a huge hit on performance. Where an ARM part does support unaligned accesses (e.g. single word normal load), there is a performance penalty and there should be a configurable exception trap. To solve your problem, you would need to request a block of memory that is 4-byte aligned and copy the non-aligned bytes + fill it with garbage bytes to ensure it is 4 byte-aligned";
 
 	while(1) {
 //	    spi_write(spi0_hw, &test,5);
@@ -109,13 +101,17 @@ int main()
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
         event_task();
         if (!sd_init && sio_get(12)) {
-            sd_spi_t sd = sd_spi_init(spi0_hw, 5,3,4,2);
-            wait_ms(50);
-            sd_spi_write_block(&sd, sd_buff, 1);
-            wait_ms(500);
-            sd_spi_read_block(&sd, sd_buff,1);
+            sd = sd_spi_init(spi0_hw, 5, 3, 4, 2);
+            storage = storage_init(&sd, sd_buff, 600);
             sd_init = true;
-        }
+
+            for(int i =0; i < 550; i++){
+                storage_store_byte(&storage, temp[i]);
+            }
+        }else if(sd_init && sio_get(12)) {
+            storage_task(&storage);
+       }
+
 
 		sio_put(LED,1);
         wait_ms(100);   //delay(150);

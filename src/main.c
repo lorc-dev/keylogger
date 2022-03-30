@@ -11,6 +11,7 @@
 #include "include/events/events.h"
 #include "include/drivers/sd_spi.h"
 #include "include/storage/storage.h"
+#include "include/lib/graphics/graphics.h"
 
 #define LED 25
 
@@ -44,45 +45,25 @@ int main()
 //    gpio_set_function(4,GPIO_FUNC_SPI);
 
     // I2C
-  /*  i2c_init(i2c1_hw, 100000);
+    i2c_init(i2c1_hw, 100000);
     gpio_set_function(6, GPIO_FUNC_I2C);
     gpio_set_function(7, GPIO_FUNC_I2C);
-    uint8_t buffer[1024];
+
+    // SSD1306 display
+    uint8_t buffer[512];
     ssd1306_t ssd1306 = ssd1306_init(i2c1_hw, 0x3C, 128,32, buffer);
 
-    for(int i = 0; i < 1024; i++){
-        buffer[i] = 0;
-    }
-    buffer[0] = 8;
-    buffer[1] = 8;
-    buffer[2] = 8;
-    buffer[3] = 8;
+    // Graphics
+    graphics_display_t display = graphics_init(&ssd1306);
 
-    buffer[100] = 8;
-    buffer[101] = 16;
-    buffer[102] = 32;
-    buffer[103] = 64;
-
-    buffer[129] = 255;
-    buffer[130] = 127;
-    buffer[131] = 63;
-    buffer[132] = 31;
-
-    for(int y = 0; y < 32; y++)
-        for(int x = 0; x < 128; x++)
-            if (x == y)
-                ssd1306_set_pixel(&ssd1306, x+y/3, y, true);
-
-    wait_ms(100);
-    ssd1306_display(&ssd1306);*/
-
+    // USB host controller
     //usb_init();
 
-   gpio_set_function(12, GPIO_FUNC_SIO);
+    gpio_set_function(12, GPIO_FUNC_SIO);
     gpio_set_pulldown(12, false);
     gpio_set_pullup(12,true);
-   sio_init(12);
-   sio_set_dir(12,INPUT);
+    sio_init(12);
+    sio_set_dir(12,INPUT);
 
 //    gpio_set_irq_enabled(12,gpio_irq_event_edge_high, toggle);
 //    gpio_set_irq_enabled(12,gpio_irq_event_edge_low, toggle);
@@ -94,12 +75,18 @@ int main()
     storage_t storage;
     uint8_t temp[600] = "On ARM-based systems you frequently cannot address a 32-bit word that is not aligned to a 4-byte boundary (as your error is telling you). On x86 you can access non-aligned data, however there is a huge hit on performance. Where an ARM part does support unaligned accesses (e.g. single word normal load), there is a performance penalty and there should be a configurable exception trap. To solve your problem, you would need to request a block of memory that is 4-byte aligned and copy the non-aligned bytes + fill it with garbage bytes to ensure it is 4 byte-aligned";
 
+    int lc = 0;
+    graphics_print_text(&display, "KEYLOGGER\nDisplay test");
+    graphics_draw_horizontal_line(&display, (coordinate_t){0,20}, 128);
+
 	while(1) {
 //	    spi_write(spi0_hw, &test,5);
         //uart_puts(uart0_hw, "Dit is een test");
 //	    uart_write(uart0_hw,&test,5);
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
         event_task();
+        graphics_task(&display);
+
         if (!sd_init && sio_get(12)) {
             sd = sd_spi_init(spi0_hw, 5, 3, 4, 2);
             storage = storage_init(&sd, sd_buff, 600);
@@ -112,6 +99,8 @@ int main()
             storage_task(&storage);
        }
 
+
+//        graphics_print_char(&display, 'E');
 
 		sio_put(LED,1);
         wait_ms(100);   //delay(150);

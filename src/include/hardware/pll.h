@@ -54,6 +54,6 @@ typedef struct {
 
 
 // Function prototypes
-void pll_init();
+void pll_init(void);
 
 #endif //KEYLOGGER_PLL_H

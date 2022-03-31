@@ -11,7 +11,7 @@
  * USB: 48MHz
  * SYS: 125MHz
  */
-void pll_init() {
+void pll_init(void) {
     // 1. Program the reference clock divider
     // 2. Program the feedback divider
     // 3. Turn on the main and VCO power

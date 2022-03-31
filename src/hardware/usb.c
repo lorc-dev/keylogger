@@ -140,7 +140,6 @@ void usb_irq(void) {
 }
 
 extern void isr_irq5(void) {
-    uart_puts(uart0_hw, "!*!");
     usb_irq();
 }
 

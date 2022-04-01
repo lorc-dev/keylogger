@@ -32,7 +32,7 @@ graphics_display_t graphics_init(ssd1306_t *ssd1306_display) {
 
     // Text options
     display.cols = display.width / 8;
-    display.rows = display.rows / 8;
+    display.rows = display.height / 8;
     display.cursor_position.row = 0;
     display.cursor_position.col = 0;
 
@@ -77,6 +77,8 @@ void graphics_clear_display(graphics_display_t *display) {
  * @param display
  */
 void graphics_display(graphics_display_t *display) {
+    // TODO: There seems to be a bug in the ssd1306_display function, calling it twice seems to resolve it
+    ssd1306_display(display->display);
     ssd1306_display(display->display);
 }
 

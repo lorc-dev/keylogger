@@ -246,6 +246,7 @@ int hid_report_parse(usb_hid_keyboard_report_parser_t *parser, usb_hid_boot_keyb
             }
         }
     }
+    memcpy(parser->pressed_keys, report->keycodes, 6);
 
     return pressed_keys_count;
 }

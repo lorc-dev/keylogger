@@ -111,6 +111,21 @@ typedef struct {
 #define I2C_IC_RAW_INTR_STAT_RX_OVER_BIT        (1ul<<1)
 #define I2C_IC_RAW_INTR_STAT_RX_UNDER_BIT       (1ul)
 
+// IC_INTR_MASK register (See Table 472)
+#define I2C_IC_INTR_MASK_RESTART_DET_BIT    (1ul<<12)
+#define I2C_IC_INTR_MASK_GEN_CALL_BIT       (1ul<<11)
+#define I2C_IC_INTR_MASK_START_DET_BIT      (1ul<<10)
+#define I2C_IC_INTR_MASK_STOP_DET_BIT       (1ul<<9)
+#define I2C_IC_INTR_MASK_ACTIVITY_BIT       (1ul<<8)
+#define I2C_IC_INTR_MASK_RX_DONE_BIT        (1ul<<7)
+#define I2C_IC_INTR_MASK_TX_ABRT_BIT        (1ul<<6)
+#define I2C_IC_INTR_MASK_RD_REQ_BIT         (1ul<<5)
+#define I2C_IC_INTR_MASK_TX_EMPTY_BIT       (1ul<<4)
+#define I2C_IC_INTR_MASK_TX_OVER_BIT        (1ul<<3)
+#define I2C_IC_INTR_MASK_RX_FULL_BIT        (1ul<<2)
+#define I2C_IC_INTR_MASK_RX_OVER_BIT        (1ul<<1)
+#define I2C_IC_INTR_MASK_RX_UNDER_BIT       (1ul)
+
 
 // IC_SDA_HOLD register (See Table 491)
 #define I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD_BITS     (0xfffful<<16)
@@ -137,6 +152,20 @@ typedef struct {
 #define I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK_BIT    (1ul<<1)    // Byte 1 of 10B address not ACKed by anny slave
 #define I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK_BIT    (1ul)       // NOACK for 7-bit address
 
+typedef enum {
+    i2c_slave_receive,  // Data from master available
+    i2c_slave_request,  // Master is requesting data
+    i2c_slave_finish,   // Master has sent the stop or restart signal
+} i2c_slave_event_t;
+
+typedef void (*i2c_slave_handler_t)(i2c_hw_t *i2c, i2c_slave_event_t event);
+
+typedef struct {
+    i2c_hw_t *i2c;
+    bool transfer_in_progress;
+    i2c_slave_handler_t handler;
+} i2c_slave_t;
+
 
 // Function prototypes
 void i2c_init(i2c_hw_t *i2c, uint32_t clk_rate);
@@ -145,5 +174,9 @@ void i2c_set_slave_mode(i2c_hw_t *i2c, bool slave, uint8_t address);
 static inline void i2c_set_target_address(i2c_hw_t *i2c, uint8_t address);
 uint32_t i2c_write(i2c_hw_t *i2c, uint8_t address, uint8_t *src, uint32_t len, bool start, bool stop);
 uint32_t i2c_read(i2c_hw_t *i2c, uint8_t address, uint8_t *dst, uint32_t len, bool start, bool stop);
+void i2c_slave_init(i2c_hw_t *i2c, uint8_t address, i2c_slave_handler_t handler);
+void i2c_slave_irq(i2c_slave_t *slave);
+static inline void i2c_slave_finish_transfer(i2c_slave_t *slave);
+
 
 #endif //KEYLOGGER_I2C_H

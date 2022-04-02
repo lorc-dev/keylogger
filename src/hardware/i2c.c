@@ -8,7 +8,10 @@
 #include "../include/hardware/resets.h"
 #include "../include/hardware/clocks.h"
 #include "../include/lib/math.h"
+#include "../include/hardware/irq.h"
 
+
+static i2c_slave_t i2c_slaves[2];
 
 /**
  * Initializes and configures an I2C controller.
@@ -208,4 +211,114 @@ uint32_t i2c_read(i2c_hw_t *i2c, uint8_t address, uint8_t *dst, uint32_t len, bo
     }
 
     return abort_source;
+}
+
+/**
+ * Init the an i2c controller as slave
+ *
+ * @param i2c
+ * @param address
+ * @param handler
+ */
+void i2c_slave_init(i2c_hw_t *i2c, uint8_t address, i2c_slave_handler_t handler) {
+    i2c_slave_t *slave;
+
+    // Select the correct slave
+    if (i2c == i2c0_hw) {
+        slave = &i2c_slaves[0];
+    }
+    else {
+        slave = &i2c_slaves[1];
+    }
+
+    // Initialize the struct members
+    slave->i2c = i2c;
+    slave->handler = handler;
+
+    // Select slave mode in the i2c controller
+    i2c_set_slave_mode(i2c, true, address);
+
+    // Unmask interrupts
+    i2c->ic_intr_mask = I2C_IC_INTR_MASK_RX_FULL_BIT | I2C_IC_INTR_MASK_RD_REQ_BIT | I2C_IC_INTR_MASK_TX_ABRT_BIT | I2C_IC_INTR_MASK_STOP_DET_BIT | I2C_IC_INTR_MASK_START_DET_BIT;
+
+    // Enable the interrupt
+    if (i2c == i2c0_hw) {
+        irq_set_enabled(I2C0_IRQ, true);
+    }
+    else {
+        irq_set_enabled(I2C1_IRQ, true);
+    }
+}
+
+/**
+ * IRQ23 handler
+ * TODO: move to irq.c
+ */
+extern void isr_irq23(void) {
+    i2c_slave_irq(&i2c_slaves[0]);
+}
+
+/**
+ * IRQ24 handler
+ * TODO: move to irq.c
+ */
+extern void isr_irq24(void) {
+    i2c_slave_irq(&i2c_slaves[1]);
+}
+
+/**
+ * I2C IRQ handler
+ *
+ * @param i2c
+ */
+void i2c_slave_irq(i2c_slave_t *slave) {
+    uint32_t int_status = slave->i2c->ic_intr_stat;
+
+    if (int_status == 0) {
+        return;
+    }
+
+    // The I2C transmitter is unable to complete the intended actions on the contents of the transmit FIFO
+    if (int_status & I2C_IC_RAW_INTR_STAT_TX_ABRT_BIT) {
+        slave->i2c->ic_clr_tx_abrt;
+        i2c_slave_finish_transfer(slave);
+    }
+
+    // A start or restart condition has occurred
+    if (int_status & I2C_IC_RAW_INTR_STAT_START_DET_BIT) {
+        slave->i2c->ic_clr_start_det;
+        i2c_slave_finish_transfer(slave);
+    }
+
+    // A stop condition has occurred
+    if (int_status & I2C_IC_RAW_INTR_STAT_STOP_DET_BIT) {
+        slave->i2c->ic_clr_stop_det;
+        i2c_slave_finish_transfer(slave);
+    }
+
+    // The receive buffer reaches or goes above the RX_TL threshold
+    if (int_status & I2C_IC_RAW_INTR_STAT_RX_FULL_BIT) {
+        // Automatically cleared by hardware when the buffer level goes below the threshold
+        slave->transfer_in_progress = true;
+        slave->handler(slave->i2c, i2c_slave_receive);
+    }
+
+    // I2C master is attempting to read data
+    if (int_status & I2C_IC_RAW_INTR_STAT_RD_REQ_BIT) {
+        slave->i2c->ic_clr_rd_req;
+        slave->transfer_in_progress = true;
+        slave->handler(slave->i2c, i2c_slave_request);
+    }
+}
+
+/**
+ * Slave transfer is finished
+ *
+ * @param slave
+ */
+static inline void i2c_slave_finish_transfer(i2c_slave_t *slave) {
+    if (slave->transfer_in_progress) {
+        slave->handler(slave->i2c, i2c_slave_finish);
+        slave->transfer_in_progress = false;
+    }
 }

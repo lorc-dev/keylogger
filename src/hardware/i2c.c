@@ -322,3 +322,25 @@ static inline void i2c_slave_finish_transfer(i2c_slave_t *slave) {
         slave->transfer_in_progress = false;
     }
 }
+
+/**
+ * Read a byte from the RX FIFO.
+ * This function assumes the FIFO isn't empty
+ *
+ * @param i2c
+ * @return
+ */
+uint8_t i2c_slave_read_byte(i2c_hw_t *i2c) {
+    return (uint8_t)i2c->ic_data_cmd;
+}
+
+/**
+ * Write a byte tho the TX FIFO.
+ * This function assumes the FIFO isn't full
+ *
+ * @param i2c
+ * @param value
+ */
+void i2c_slave_write_byte(i2c_hw_t *i2c, uint8_t value) {
+    i2c->ic_data_cmd = value;
+}

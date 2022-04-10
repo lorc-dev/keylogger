@@ -53,6 +53,15 @@ void usb_host_hid_init_handler(void) {
 }
 
 /**
+ * Sent an output report to the device
+ *
+ * @param report
+ */
+void usb_host_hid_send_output_report(usb_hid_boot_keyboard_output_report_t *report) {
+    usb_host_set_report(usb_hid_report_type_output, (uint8_t*)report, USB_HID_BOOT_KEYBOARD_OUTPUT_REPORT_SIZE);
+}
+
+/**
  * Sets the protocol (boot or report protocol)
  * See 7.2.6 Set_Protocol Request of HID1_11
  *
@@ -72,6 +81,28 @@ static void usb_host_hid_set_protocol(usb_device_t * device, bool report_protoco
             .w_length = 0
     };
     usb_send_control_transfer(device->address, &setup_request, NULL);
+}
+
+/**
+ * Sent a Set_Report request to the device
+ *
+ * @param report_type
+ * @param report
+ * @param report_len
+ */
+static void usb_host_set_report(usb_hid_report_type_t report_type, uint8_t *report, uint16_t report_len) {
+    usb_setup_data_t setup_request = (usb_setup_data_t) {
+            .bm_request_type_bits = {
+                    .recipient = usb_bm_request_type_recipient_interface,
+                    .type = usb_bm_request_type_type_class,
+                    .direction = usb_bm_request_type_direction_host_to_dev
+            },
+            .b_request = usb_hid_b_request_set_report,
+            .w_value = ((uint16_t)report_type) << 8 | 0x00,
+            .w_index = usb_device.interface_number_hid & 0xff,
+            .w_length = report_len
+    };
+    usb_send_control_transfer(usb_device.address, &setup_request, report);
 }
 
 /**

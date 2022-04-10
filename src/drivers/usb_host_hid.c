@@ -110,7 +110,7 @@ static void usb_host_hid_init_report_queue(void) {
 static void usb_host_hid_report_enqueue(usb_hid_boot_keyboard_input_report_t report) {
     if (!usb_host_hid_report_queue_is_full()) {
         // Update front index
-        if (report_queue_front++ >= USB_HOST_HID_REPORT_QUEUE_SIZE) {
+        if (++report_queue_front >= USB_HOST_HID_REPORT_QUEUE_SIZE) {
             report_queue_front = 0;
         }
         report_queue_items++;
@@ -132,7 +132,7 @@ static void usb_host_hid_report_enqueue(usb_hid_boot_keyboard_input_report_t rep
 usb_hid_boot_keyboard_input_report_t usb_host_hid_report_dequeue(void) {
     if (!usb_host_hid_report_queue_is_empty()) {
         // Update rear index
-        if (report_queue_rear++ >= USB_HOST_HID_REPORT_QUEUE_SIZE) {
+        if (++report_queue_rear >= USB_HOST_HID_REPORT_QUEUE_SIZE) {
             report_queue_rear = 0;
         }
         report_queue_items--;

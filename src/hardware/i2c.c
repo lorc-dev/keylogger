@@ -344,3 +344,23 @@ uint8_t i2c_slave_read_byte(i2c_hw_t *i2c) {
 void i2c_slave_write_byte(i2c_hw_t *i2c, uint8_t value) {
     i2c->ic_data_cmd = value;
 }
+
+/**
+ * Checks if the receive buffer contains data
+ *
+ * @param i2c
+ * @return
+ */
+bool i2c_is_readable(i2c_hw_t *i2c) {
+    return i2c->ic_rxflr != 0;
+}
+
+/**
+ * Checks if the transmit buffer is not empty
+ *
+ * @param i2c
+ * @return
+ */
+bool i2c_is_writable(i2c_hw_t *i2c) {
+    return i2c->ic_txflr < 16; // 16-element transmit buffer
+}

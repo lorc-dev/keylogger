@@ -179,6 +179,8 @@ void i2c_slave_irq(i2c_slave_t *slave);
 static inline void i2c_slave_finish_transfer(i2c_slave_t *slave);
 uint8_t i2c_slave_read_byte(i2c_hw_t *i2c);
 void i2c_slave_write_byte(i2c_hw_t *i2c, uint8_t value);
+bool i2c_is_readable(i2c_hw_t *i2c);
+bool i2c_is_writable(i2c_hw_t *i2c);
 
 
 #endif //KEYLOGGER_I2C_H

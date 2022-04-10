@@ -52,7 +52,7 @@ void event_task(void) {
 static void event_enqueue(event_t event) {
     if (!event_queue_is_full()) {
         // Update front index
-        if (event_queue_front++ >= EVENT_QUEUE_SIZE) {
+        if (++event_queue_front >= EVENT_QUEUE_SIZE) {
             event_queue_front = 0;
         }
         event_items++;
@@ -73,7 +73,7 @@ static void event_enqueue(event_t event) {
 static event_t event_dequeue(void) {
     if (!event_queue_is_empty()) {
         // Update rear index
-        if(event_queue_rear++ >= EVENT_QUEUE_SIZE) {
+        if(++event_queue_rear >= EVENT_QUEUE_SIZE) {
             event_queue_rear = 0;
         }
         event_items--;

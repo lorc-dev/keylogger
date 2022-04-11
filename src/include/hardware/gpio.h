@@ -37,10 +37,10 @@
 
 
 typedef enum {
-    gpio_irq_event_level_low = 1,
-    gpio_irq_event_level_high = 2,
-    gpio_irq_event_edge_low = 4,
-    gpio_irq_event_edge_high = 8,
+    gpio_irq_event_level_low = 0,
+    gpio_irq_event_level_high,
+    gpio_irq_event_edge_low,
+    gpio_irq_event_edge_high,
 } gpio_irq_event_t;
 
 // See table 293
@@ -78,5 +78,6 @@ void gpio_set_pullup(uint8_t gpio, bool enable);
 void gpio_set_pulldown(uint8_t gpio, bool enable);
 void gpio_irq_handler(void);
 void gpio_set_irq_enabled(uint8_t gpio, gpio_irq_event_t event, void (*callback) (void));
+void gpio_set_irq_disabled(uint8_t gpio, gpio_irq_event_t event);
 
 #endif //KEYLOGGER_GPIO_H

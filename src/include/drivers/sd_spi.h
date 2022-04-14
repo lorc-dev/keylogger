@@ -16,10 +16,18 @@ typedef enum {
     SDUC    // 4TB-128TB
 } sd_version_t;
 
+typedef enum {
+    sd_status_disconnected,
+    sd_status_connected,
+    sd_status_initialized,
+} sd_status_t;
+
 typedef struct {
     spi_hw_t *spi;
     uint8_t cs_pin;
+    uint8_t detect_pin;
     sd_version_t sd_version;
+    sd_status_t status;
 } sd_spi_t;
 
 // Commands (See 7.3.1.3 Detailed Command Description)
@@ -57,15 +65,29 @@ typedef struct {
 #define SD_TOKEN_DATA_RES_WRITE_ERROR   0x0D    // Data rejected due to a write error
 
 
+/**
+ * Returns if the sdcard is connected and initialized
+ *
+ * @param sd
+ * @return
+ */
+inline bool sd_spi_card_connected(sd_spi_t *sd) {
+    return sd->status == sd_status_initialized;
+}
+
+
 // Function prototypes
-sd_spi_t sd_spi_init(spi_hw_t * spi_hw, uint8_t cs_pin, uint8_t mosi_pin, uint8_t miso_pin, uint8_t clk_pin);
+void sd_spi_init(sd_spi_t *sd, spi_hw_t * spi_hw, uint8_t cs_pin, uint8_t mosi_pin, uint8_t miso_pin, uint8_t clk_pin, uint8_t detect_pin);
+void sd_spi_disconnect_handler(void);
+void sd_spi_task(sd_spi_t *sd);
+bool sd_spi_init_card(sd_spi_t *sd);
 static uint8_t sd_spi_send_command(sd_spi_t *sd, uint8_t cmd, uint32_t arg);
 static uint8_t sd_spi_send_acommand(sd_spi_t *sd, uint8_t cmd, uint32_t arg);
-bool sd_spi_is_busy(sd_spi_t * sd);
+static bool sd_spi_is_busy(sd_spi_t * sd);
 static inline void sd_spi_chip_select_high(sd_spi_t *sd);
 static inline void sd_spi_chip_select_low(sd_spi_t *sd);
-void sd_spi_read_block(sd_spi_t *sd, uint8_t *dst, uint32_t block);
-void sd_spi_write_block(sd_spi_t *sd, uint8_t *src, uint32_t block);
+bool sd_spi_read_block(sd_spi_t *sd, uint8_t *dst, uint32_t block);
+bool sd_spi_write_block(sd_spi_t *sd, uint8_t *src, uint32_t block);
 void sd_spi_read_csd_register(sd_spi_t *sd, uint8_t *dst);
 uint32_t sd_spi_card_size(sd_spi_t *sd);
 

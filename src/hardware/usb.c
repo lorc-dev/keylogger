@@ -16,19 +16,20 @@
 
 struct endpoint_struct endpoints[16];
 static uint8_t usb_ctrl_buffer[64];
-usb_device_t usb_device;    // Only one usb device
+usb_device_t *usb_device;    // Only one usb device
 
 
 /**
  * Initializes the USB controller in host mode
  */
-void usb_init(void) {
+void usb_init(usb_device_t *device) {
+    usb_device = device;
     // Init usb_device struct
-    usb_device.address = 0;       // Standard address
-    usb_device.max_packet_size_ep_0 = 64;
-    usb_device.connected = false;
-    usb_device.enumerated = false;
-    usb_device.hid_driver_loaded = false;
+    usb_device->address = 0;       // Standard address
+    usb_device->max_packet_size_ep_0 = 64;
+    usb_device->connected = false;
+    usb_device->enumerated = false;
+    usb_device->hid_driver_loaded = false;
 
     // Reset USB controller
     reset_subsystem(RESETS_RESET_USBCTRL);
@@ -72,7 +73,7 @@ static void usb_init_endpoints(void) {
     endpoints[0].buffer_control = &usb_host_dpsram->epx_buff_ctrl;
     endpoints[0].endpoint_control = &usb_host_dpsram->epx_ctrl;
     endpoints[0].dps_data_buffer = &usb_host_dpsram->data_buffers[0];
-    endpoints[0].w_max_packet_size = usb_device.max_packet_size_ep_0;
+    endpoints[0].w_max_packet_size = usb_device->max_packet_size_ep_0;
     endpoints[0].interrupt_number = 0;
     endpoints[0].interrupt_interval = 0;
 
@@ -158,8 +159,8 @@ static inline dev_speed_t device_speed(void) {
  * @param device
  */
 void usb_device_attach_handler(void) {
-    usb_device.connected = true;
-    usb_enum_device(&usb_device);
+    usb_device->connected = true;
+    usb_enum_device(usb_device);
 }
 
 /**
@@ -168,11 +169,11 @@ void usb_device_attach_handler(void) {
  * @param device
  */
 void usb_device_detach_handler(void) {
-    usb_device.address = 0;       // Standard address
-    usb_device.max_packet_size_ep_0 = 64;
-    usb_device.connected = false;
-    usb_device.enumerated = false;
-    usb_device.hid_driver_loaded = false;
+    usb_device->address = 0;       // Standard address
+    usb_device->max_packet_size_ep_0 = 64;
+    usb_device->connected = false;
+    usb_device->enumerated = false;
+    usb_device->hid_driver_loaded = false;
 }
 
 /**
@@ -519,7 +520,7 @@ static void usb_handle_buff_status(void) {
                 usb_endpoint_reset(&endpoints[i]);
 
                 // Check if this is for the HID driver
-                if (usb_device.hid_driver_loaded && endpoints[i].interrupt_number == usb_device.local_interrupt_endpoint_number) {
+                if (usb_device->hid_driver_loaded && endpoints[i].interrupt_number == usb_device->local_interrupt_endpoint_number) {
                     // Call hid report handler
                     event_add(event_usb_host_hid_report_available, usb_host_hid_report_received_handler);
                 }

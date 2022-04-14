@@ -426,10 +426,40 @@ struct endpoint_struct {
 // USB class codes
 #define USB_CLASS_CODE_HID  0x03
 
+/**
+ * Getter for the usb device product id
+ *
+ * @param device
+ * @return
+ */
+static inline uint16_t usb_get_pid(usb_device_t *device) {
+    return device->product_id;
+}
+
+/**
+ * Getter for the usb device vendor id
+ *
+ * @param device
+ * @return
+ */
+static inline uint16_t usb_get_vid(usb_device_t *device) {
+    return device->vendor_id;
+}
+
+/**
+ * Getter for the device connected status
+ *
+ * @param device
+ * @return true: device connected, enumerated and driver loaded, false: hid driver not loaded
+ */
+static inline bool usb_get_device_connected(usb_device_t *device) {
+    return device->hid_driver_loaded;
+}
+
 ///////////////////////////
 /// Function prototypes ///
 ///////////////////////////
-void usb_init(void);
+void usb_init(usb_device_t *device);
 static void usb_init_endpoints(void);
 static void usb_irq(void);
 static inline dev_speed_t device_speed(void);

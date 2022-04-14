@@ -10,7 +10,7 @@
 #include "../include/hardware/usb.h"
 #include "../include/hardware/uart.h" // TODO: remove temp header
 
-extern usb_device_t usb_device;
+extern usb_device_t *usb_device;
 static uint8_t interrupt_out_endpoint_buffer[64];
 
 static usb_hid_boot_keyboard_input_report_t last_report;
@@ -31,25 +31,25 @@ void usb_host_hid_init_handler(void) {
     usb_host_hid_init_report_queue();
 
     // Select the boot protocol instead of the default report protocol
-    usb_host_hid_set_protocol(&usb_device, false);
+    usb_host_hid_set_protocol(usb_device, false);
 
     // Setup Interrupt out endpoint
     struct endpoint_struct * interrupt_out_endpoint = usb_get_endpoint(1);
-    usb_device.local_interrupt_endpoint_number = 1;
+    usb_device->local_interrupt_endpoint_number = 1;
 
     usb_endpoint_init(interrupt_out_endpoint,
-                      usb_device.address,
-                      usb_device.interrupt_out_endpoint_number,
+                      usb_device->address,
+                      usb_device->interrupt_out_endpoint_number,
                       1,
-                      usb_device.interrupt_out_endpoint_max_packet_size,
+                      usb_device->interrupt_out_endpoint_max_packet_size,
                       usb_data_flow_types_interrupt_transfer,
-                      usb_device.interrupt_out_endpoint_polling_interval
+                      usb_device->interrupt_out_endpoint_polling_interval
     );
 
-    usb_endpoint_transfer(usb_device.address, interrupt_out_endpoint,
-                          usb_device.interrupt_out_endpoint_number,interrupt_out_endpoint_buffer,
-                          usb_device.interrupt_out_endpoint_max_packet_size,1);
-    usb_device.hid_driver_loaded = true;
+    usb_endpoint_transfer(usb_device->address, interrupt_out_endpoint,
+                          usb_device->interrupt_out_endpoint_number,interrupt_out_endpoint_buffer,
+                          usb_device->interrupt_out_endpoint_max_packet_size,1);
+    usb_device->hid_driver_loaded = true;
 }
 
 /**
@@ -99,10 +99,10 @@ static void usb_host_set_report(usb_hid_report_type_t report_type, uint8_t *repo
             },
             .b_request = usb_hid_b_request_set_report,
             .w_value = ((uint16_t)report_type) << 8 | 0x00,
-            .w_index = usb_device.interface_number_hid & 0xff,
+            .w_index = usb_device->interface_number_hid & 0xff,
             .w_length = report_len
     };
-    usb_send_control_transfer(usb_device.address, &setup_request, report);
+    usb_send_control_transfer(usb_device->address, &setup_request, report);
 }
 
 /**
@@ -119,9 +119,9 @@ void usb_host_hid_report_received_handler(void) {
 
     // Schedule a new report
     struct endpoint_struct * interrupt_out_endpoint = usb_get_endpoint(1);
-    usb_endpoint_transfer(usb_device.address, interrupt_out_endpoint,
-                          usb_device.interrupt_out_endpoint_number,interrupt_out_endpoint_buffer,
-                          usb_device.interrupt_out_endpoint_max_packet_size,1);
+    usb_endpoint_transfer(usb_device->address, interrupt_out_endpoint,
+                          usb_device->interrupt_out_endpoint_number,interrupt_out_endpoint_buffer,
+                          usb_device->interrupt_out_endpoint_max_packet_size,1);
 }
 
 /**

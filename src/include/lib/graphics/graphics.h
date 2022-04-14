@@ -10,6 +10,8 @@
 #include "../../drivers/ssd1306.h"
 
 #define GRAPHICS_FONT   font_8x8_basic
+#define GRAPHICS_FONT_CHAR_WIDTH    8
+#define GRAPHICS_FONT_CHAR_HEIGHT   8
 
 extern char font_8x8_basic[128][8];
 
@@ -41,10 +43,12 @@ void graphics_draw_line(graphics_display_t *display, coordinate_t start, coordin
 void graphics_draw_horizontal_line(graphics_display_t *display, coordinate_t start, uint8_t length);
 void graphics_draw_vertical_line(graphics_display_t *display, coordinate_t start, uint8_t length);
 void graphics_draw_char(graphics_display_t *display, coordinate_t pos, char c);
+void graphics_draw_text(graphics_display_t *display, coordinate_t pos, char *str);
 void graphics_print_char(graphics_display_t *display, char c);
 void graphics_print_text(graphics_display_t *display, char *str);
 void graphics_set_cursor(graphics_display_t *display, uint8_t row, uint8_t col);
 coordinate_t graphics_cursor_coordinate(graphics_display_t *display);
+void graphics_draw_title(graphics_display_t *display, char *title);
 void graphics_task(graphics_display_t *display);
 
 #endif //KEYLOGGER_GRAPHICS_H

@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "../../include/lib/graphics/graphics.h"
 #include "../../include/drivers/ssd1306.h"
 
@@ -31,8 +32,8 @@ graphics_display_t graphics_init(ssd1306_t *ssd1306_display) {
     display.height = ssd1306_display->height;
 
     // Text options
-    display.cols = display.width / 8;
-    display.rows = display.height / 8;
+    display.cols = display.width / GRAPHICS_FONT_CHAR_WIDTH;
+    display.rows = display.height / GRAPHICS_FONT_CHAR_HEIGHT;
     display.cursor_position.row = 0;
     display.cursor_position.col = 0;
 
@@ -133,11 +134,29 @@ void graphics_draw_vertical_line(graphics_display_t *display, coordinate_t start
  * @param c
  */
 void graphics_draw_char(graphics_display_t *display, coordinate_t pos, char c) {
-    for (int x = 0; x < 8; x++) {
-        for (int y = 0; y < 8; y++) {
+    for (int x = 0; x < GRAPHICS_FONT_CHAR_WIDTH; x++) {
+        for (int y = 0; y < GRAPHICS_FONT_CHAR_HEIGHT; y++) {
             if (GRAPHICS_FONT[c][y] & 1 << x) {
                 graphics_draw_pixel(display, (coordinate_t){pos.x + x, pos.y + y});
             }
+        }
+    }
+}
+
+/**
+ * Draw a string at a specific location. Wraps around on the same line
+ *
+ * @param display
+ * @param pos
+ * @param str
+ */
+void graphics_draw_text(graphics_display_t *display, coordinate_t pos, char *str) {
+    while (*str != 0) {
+        graphics_draw_char(display, pos, *str);
+        str++;
+        pos.x += GRAPHICS_FONT_CHAR_WIDTH;
+        if (pos.x >= display->width - 1) {
+            pos.x = 0;
         }
     }
 }
@@ -211,9 +230,35 @@ void graphics_set_cursor(graphics_display_t *display, uint8_t row, uint8_t col) 
  */
 coordinate_t graphics_cursor_coordinate(graphics_display_t *display) {
     coordinate_t cursor_coordinate;
-    cursor_coordinate.x = display->cursor_position.col * 8;
-    cursor_coordinate.y = display->cursor_position.row * 8;
+    cursor_coordinate.x = display->cursor_position.col * GRAPHICS_FONT_CHAR_WIDTH;
+    cursor_coordinate.y = display->cursor_position.row * GRAPHICS_FONT_CHAR_HEIGHT;
     return cursor_coordinate;
+}
+
+/**
+ * @brief Draw a title.
+ * The text is positioned in the center of the first line and underlined.
+ * Pixel row 0-9 will be used
+ *
+ * @param display
+ * @param title
+ */
+void graphics_draw_title(graphics_display_t *display, char *title) {
+    coordinate_t text_pos;
+    coordinate_t line_pos;
+
+    // Calculate the start position of the text (center text)
+    uint8_t title_len = strlen(title);
+    text_pos.x = (display->width - title_len * GRAPHICS_FONT_CHAR_WIDTH) / 2;
+    text_pos.y = 0;
+
+    // Calculate the start position of the line (1px under the text)
+    line_pos.x = 0;
+    line_pos.y = GRAPHICS_FONT_CHAR_HEIGHT;
+
+    // Print the text and the line
+    graphics_draw_text(display, text_pos, title);
+    graphics_draw_horizontal_line(display, line_pos, display->width);
 }
 
 /**

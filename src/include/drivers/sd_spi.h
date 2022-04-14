@@ -71,7 +71,7 @@ typedef struct {
  * @param sd
  * @return
  */
-inline bool sd_spi_card_connected(sd_spi_t *sd) {
+static inline bool sd_spi_card_connected(sd_spi_t *sd) {
     return sd->status == sd_status_initialized;
 }
 

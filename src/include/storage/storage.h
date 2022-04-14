@@ -32,7 +32,7 @@ typedef struct {
  * @param storage
  * @return
  */
-static inline uint32_t used_blocks(storage_t *storage) {
+static inline uint32_t storage_get_used_blocks(storage_t *storage) {
     return (storage->last_used_block - 1);
 }
 

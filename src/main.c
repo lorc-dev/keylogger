@@ -14,6 +14,7 @@
 #include "include/storage/storage.h"
 #include "include/lib/graphics/graphics.h"
 #include "include/drivers/ft260.h"
+#include "include/ui/ui.h"
 
 #define LED 25
 bool print = false;
@@ -63,24 +64,8 @@ int main()
     graphics_display_t display = graphics_init(&ssd1306);
 
     // USB host controller
-    usb_init();
-
-
-    // Buttons
-    // Button 1
-    gpio_set_function(2, GPIO_FUNC_SIO);
-    gpio_set_pulldown(2, false);
-    gpio_set_pullup(2,true);
-    sio_init(2);
-    sio_set_dir(2,INPUT);
-    gpio_set_irq_enabled(2,gpio_irq_event_edge_low, toggle);
-    // Button2
-    gpio_set_function(14, GPIO_FUNC_SIO);
-    gpio_set_pulldown(14, false);
-    gpio_set_pullup(14,true);
-    sio_init(14);
-    sio_set_dir(14,INPUT);
-    gpio_set_irq_enabled(14,gpio_irq_event_edge_low, toggle);
+    usb_device_t usb_device;
+    usb_init(&usb_device);
 
     // Sd card
     sd_spi_t sd;
@@ -100,6 +85,14 @@ int main()
     usb_hid_boot_keyboard_input_report_t hid_report;
     usb_hid_boot_keyboard_output_report_t output_report;
 
+    // UI
+    ui_t ui;
+    ui_init(&ui, &display, 14, 2, &storage, &usb_device);
+
+    // Loading screen
+    ui_menu_loading_screen(&ui);
+    wait_ms(500);
+//
 	while(1) {
 //	    spi_write(spi0_hw, &test,5);
         //uart_puts(uart0_hw, "Dit is een test");
@@ -113,6 +106,11 @@ int main()
         graphics_task(&display);
         sd_spi_task(&sd);
         storage_task(&storage);
+        ui_task(&ui);
+
+//        ui_menu_sd_card_status_set_data(&ui, sd_spi_card_connected(&sd), storage_get_used_blocks(&storage));
+//        ui_menu_keyboard_status_set_data(&ui, usb_get_device_connected(&usb_device), usb_get_pid(&usb_device),usb_get_vid(&usb_device));
+
 
         /*if (!sd_init && !sio_get(1)) {
             sd = sd_spi_init(spi0_hw, 17, 19, 20, 18);
@@ -131,12 +129,12 @@ int main()
             ft260_send_input_report(&ft260, &hid_report);
             int chars = hid_report_parse(&hid_parser, &hid_report, pressed_keys);
             for (int i = 0; i < chars; i++){
-                graphics_print_char(&display, pressed_keys[i]);
                 storage_store_byte(&storage, pressed_keys[i]);
+                ui_menu_live_output_set_data(&ui, pressed_keys[i]);
             }
         }
         if (ft260_get_output_report(&ft260, &output_report)) {
-           //usb_host_hid_send_output_report(&output_report);
+           usb_host_hid_send_output_report(&output_report);
         }
 
 //		sio_put(LED,1);

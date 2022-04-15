@@ -9,6 +9,7 @@
 #include "../include/hardware/gpio.h"
 #include "../include/hardware/sio.h"
 #include "../include/hardware/timer.h"
+#include "../include/events/events.h"
 
 sd_spi_t *sd_card[2];  // There can only be one active sd card instance per spi controller (2)
 
@@ -69,6 +70,7 @@ void sd_spi_disconnect_handler(void) {
         if (sd_card[i] != 0) {
             if (sio_get(sd_card[i]->detect_pin)) {
                 sd_card[i]->status = sd_status_disconnected;
+                event_add(event_sd_card_disconnected, NULL);
             }
         }
     }

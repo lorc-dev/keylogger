@@ -16,6 +16,9 @@ typedef enum {
     event_usb_device_detached,
     event_usb_host_hid_load_driver,
     event_usb_host_hid_report_available,
+    event_storage_initialized,
+    event_storage_block_written,
+    event_sd_card_disconnected,
 } event_type_t;
 
 typedef struct {

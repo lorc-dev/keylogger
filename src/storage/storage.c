@@ -7,6 +7,7 @@
 #include <string.h>
 #include "../include/storage/storage.h"
 #include "../include/drivers/sd_spi.h"
+#include "../include/events/events.h"
 
 /**
  * Simple storage system
@@ -64,6 +65,7 @@ void storage_device_init(storage_t *storage) {
         storage->last_used_block = *((uint32_t *) (block_1 + STORAGE_BLOCK1_LAST_BLOCK_OFFSET));
     }
     storage->device_initialized = true;
+    event_add(event_storage_initialized, NULL);
 }
 
 /**
@@ -170,6 +172,10 @@ void storage_task(storage_t *storage) {
         storage_device_init(storage);
     }
 
+    if(!sd_spi_card_connected(storage->sd_card)){
+        storage->device_initialized = false;
+    }
+
     // Write the buffer to the storage device if necessary.
     // If the storage device is not yet initialized, the buffer will be overwritten if it contains more than 512 bytes
     if (storage->unsaved_block_buffer_index >= 512) {
@@ -178,6 +184,7 @@ void storage_task(storage_t *storage) {
             storage->last_used_block++;
             storage_write_block(storage, storage->unsaved_block_buffer, storage->last_used_block);
             storage_update_block_1(storage);
+            event_add(event_storage_block_written, NULL);
         }
 
         // Reset the block buffer index

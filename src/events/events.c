@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "../include/events/events.h"
+#include "../include/ui/ui.h"
 
 event_t events_queue[EVENT_QUEUE_SIZE];
 int event_queue_front;
@@ -39,8 +40,34 @@ void event_add(event_type_t event_type, void (* callback) (void)) {
  * TODO: Add max duration?
  */
 void event_task(void) {
+    event_t event;
     while (!event_queue_is_empty()) {
-        event_dequeue().callback();
+        event = event_dequeue();
+        switch (event.event_type) {
+            // TODO: Use a subscribe model instead?
+            case event_usb_device_attached:
+                break;
+            case event_usb_device_detached:
+                ui_data_changed_event_handler(ui_data_source_keyboard);
+                break;
+            case event_usb_host_hid_load_driver:
+                ui_data_changed_event_handler(ui_data_source_keyboard);
+                break;
+            case event_usb_host_hid_report_available:
+                break;
+            case event_storage_initialized:
+                ui_data_changed_event_handler(ui_data_source_storage);
+                break;
+            case event_sd_card_disconnected:
+                ui_data_changed_event_handler(ui_data_source_storage);
+                break;
+            case event_storage_block_written:
+                ui_data_changed_event_handler(ui_data_source_storage);
+                break;
+        }
+        if (event.callback != NULL) {
+            event.callback();
+        }
     }
 }
 

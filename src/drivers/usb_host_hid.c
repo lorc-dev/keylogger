@@ -58,7 +58,9 @@ void usb_host_hid_init_handler(void) {
  * @param report
  */
 void usb_host_hid_send_output_report(usb_hid_boot_keyboard_output_report_t *report) {
-    usb_host_set_report(usb_hid_report_type_output, (uint8_t*)report, USB_HID_BOOT_KEYBOARD_OUTPUT_REPORT_SIZE);
+    if (usb_device->hid_driver_loaded) {
+        usb_host_set_report(usb_hid_report_type_output, (uint8_t *) report, USB_HID_BOOT_KEYBOARD_OUTPUT_REPORT_SIZE);
+    }
 }
 
 /**

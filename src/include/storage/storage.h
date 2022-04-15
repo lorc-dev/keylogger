@@ -36,6 +36,16 @@ static inline uint32_t storage_get_used_blocks(storage_t *storage) {
     return (storage->last_used_block - 1);
 }
 
+/**
+ * Getter for the device initialized var
+ *
+ * @param storage
+ * @return
+ */
+static inline bool storage_get_device_initialized(storage_t *storage) {
+    return storage->device_initialized;
+}
+
 
 // Function prototypes
 void storage_init(storage_t *storage, sd_spi_t * sd_card);

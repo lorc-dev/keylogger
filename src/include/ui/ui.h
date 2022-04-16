@@ -12,11 +12,13 @@
 
 #include "../storage/storage.h"
 #include "../hardware/usb.h"
+#include "../drivers/usb_hid.h"
 
 
 // Live output menu
 #define UI_MENU_ITEM_LIVE_OUTPUT_CHAR_COUNT 10  // Number of characters to view in the live output menu
 
+// Menu items and the order in which these are displayed
 typedef enum {
     ui_menu_item_sd_card_status,
     ui_menu_item_keyboard_status,
@@ -50,6 +52,7 @@ typedef struct {
     struct {
         storage_t *storage;
         usb_device_t *keyboard;
+        usb_hid_keyboard_report_parser_t  *parser;
     } devices;
 
     // Menu item data
@@ -88,7 +91,7 @@ typedef struct {
 
         // Keymap selection
         struct {
-
+            hid_keymap_t keymap;
         } keymap_selection;
     } menu_items;
 } ui_t;
@@ -121,7 +124,7 @@ static inline void ui_menu_live_output_set_data(ui_t *ui, char c) {
 }
 
 // Function prototypes
-void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uint8_t right_button_pin, storage_t *storage, usb_device_t *keyboard);
+void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uint8_t right_button_pin, storage_t *storage, usb_device_t *keyboard, usb_hid_keyboard_report_parser_t *parser);
 static void ui_on_left_button_handler(void);
 static void ui_on_right_button_handler(void);
 void ui_task(ui_t *ui);

@@ -13,6 +13,7 @@
 
 #include "../include/storage/storage.h"
 #include "../include/hardware/usb.h"
+#include "../include/drivers/usb_hid.h"
 
 ui_t *active_ui;    // There can only be one UI active
 
@@ -26,7 +27,7 @@ ui_t *active_ui;    // There can only be one UI active
  * @param storage
  * @param keyboard
  */
-void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uint8_t right_button_pin, storage_t *storage, usb_device_t *keyboard) {
+void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uint8_t right_button_pin, storage_t *storage, usb_device_t *keyboard, usb_hid_keyboard_report_parser_t *parser) {
     active_ui = ui;
 
     ui->display = display;
@@ -35,6 +36,7 @@ void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uin
     // Devices
     ui->devices.storage = storage;
     ui->devices.keyboard = keyboard;
+    ui->devices.parser = parser;
 
     // Menu
     ui->buttons.button_right_pressed = false;
@@ -141,7 +143,7 @@ static void ui_menu_data_init(ui_t *ui) {
     // Format SD card menu
 
     // Keymap selection menu
-
+    ui->menu_items.keymap_selection.keymap = hid_get_selected_keymap(ui->devices.parser);
 }
 
 /**
@@ -243,7 +245,7 @@ void ui_menu_loading_screen(ui_t *ui) {
              0x00,0x00,0x1f,0x1f,0x02,0x01,0x01,0x01,0x00,
              0x00,0x00,0x00,0x00,0x00,0x00
     };
-    memcpy(ui->display->display->buffer, loading_screen, 512);  // TODO: Make an interface for this in the graphics lib and the ssd1306 driver
+    memcpy(ui->display->display->buffer, loading_screen, 512);  // TODO: Make an interface for this in the graphics lib and/or the ssd1306 driver
     graphics_display(ui->display);
 }
 
@@ -439,12 +441,36 @@ static void ui_menu_format_sd_card(ui_t *ui, bool action_key_pressed) {
  * @param action_key_pressed
  */
 static void ui_menu_keymap_selection(ui_t *ui, bool action_key_pressed) {
+    coordinate_t text_pos;
+
+    if (action_key_pressed) {
+        switch(ui->menu_items.keymap_selection.keymap) {
+            case hid_keymap_azerty:
+                hid_report_parser_set_keymap(ui->devices.parser, hid_keymap_qwerty);
+                break;
+            case hid_keymap_qwerty:
+                hid_report_parser_set_keymap(ui->devices.parser, hid_keymap_azerty);
+                break;
+        }
+        ui->menu_items.keymap_selection.keymap = hid_get_selected_keymap(ui->devices.parser);
+    }
+
+    // Clear the display before drawing anything new on it
     graphics_clear_display(ui->display);
 
     // Menu title
     graphics_draw_title(ui->display, "Keymap");
 
-    // TODO: Implement the keymap selection menu
+    text_pos.x = 0;
+    text_pos.y = GRAPHICS_FONT_CHAR_HEIGHT + 2;
+    switch(ui->menu_items.keymap_selection.keymap) {
+        case hid_keymap_azerty:
+            graphics_draw_text(ui->display, text_pos, "< AZERTY >");
+            break;
+        case hid_keymap_qwerty:
+            graphics_draw_text(ui->display, text_pos, "< QWERTY >");
+            break;
+    }
 }
 
 /**

@@ -16,12 +16,6 @@
 #include "include/drivers/ft260.h"
 #include "include/ui/ui.h"
 
-#define LED 25
-bool print = false;
-
-void toggle(void) {
-    print = true;
-}
 
 int main()
 {
@@ -31,27 +25,15 @@ int main()
 
     event_init_queue();
 
-	// SIO
-    gpio_set_function(25, GPIO_FUNC_SIO);
-    sio_init(LED);
-
     // UART
     uart_init(uart0_hw,9600);
-   // gpio_set_function(1,GPIO_FUNC_UART);
     gpio_set_function(0,GPIO_FUNC_UART);
-    uint8_t test[5] = {0,1,2,3,4};
-
-    // SPI
-//    spi_init(spi0_hw,50000);
-//    gpio_set_function(2,GPIO_FUNC_SPI);
-//    gpio_set_function(3,GPIO_FUNC_SPI);
-//    gpio_set_function(4,GPIO_FUNC_SPI);
 
     // FT260
     ft260_t ft260;
     ft260_init(&ft260, i2c0_hw, 8, 9, 15);
 
-    // I2C
+    // I2C for the SSD1306 display
     i2c_init(i2c1_hw, 100000);
     gpio_set_function(6, GPIO_FUNC_I2C);
     gpio_set_function(7, GPIO_FUNC_I2C);
@@ -75,54 +57,27 @@ int main()
     storage_t storage;
     storage_init(&storage, &sd);
 
-    int lc = 0;
-//    graphics_print_text(&display, "KEYLOGGER\nDisplay test");
-//    graphics_draw_horizontal_line(&display, (coordinate_t){0,20}, 128);
-
-    // HID
-    usb_hid_keyboard_report_parser_t hid_parser = hid_report_parser_init();
+    // HID report parser
+    usb_hid_keyboard_report_parser_t hid_parser;
+    hid_report_parser_init(&hid_parser, hid_keymap_qwerty);
     uint8_t pressed_keys[6];
     usb_hid_boot_keyboard_input_report_t hid_report;
     usb_hid_boot_keyboard_output_report_t output_report;
 
     // UI
     ui_t ui;
-    ui_init(&ui, &display, 14, 2, &storage, &usb_device);
+    ui_init(&ui, &display, 14, 2, &storage, &usb_device, &hid_parser);
 
     // Loading screen
     ui_menu_loading_screen(&ui);
     wait_ms(500);
-//
+
 	while(1) {
-//	    spi_write(spi0_hw, &test,5);
-        //uart_puts(uart0_hw, "Dit is een test");
-//	    uart_write(uart0_hw,&test,5);
-	    //i2c_write(i2c0_hw, 0x3C, &test, 5, true, true);
-        if (print) {
-            print = false;
-            graphics_print_char(&display, 'X');
-        }
         event_task();
         graphics_task(&display);
         sd_spi_task(&sd);
         storage_task(&storage);
         ui_task(&ui);
-
-//        ui_menu_sd_card_status_set_data(&ui, sd_spi_card_connected(&sd), storage_get_used_blocks(&storage));
-//        ui_menu_keyboard_status_set_data(&ui, usb_get_device_connected(&usb_device), usb_get_pid(&usb_device),usb_get_vid(&usb_device));
-
-
-        /*if (!sd_init && !sio_get(1)) {
-            sd = sd_spi_init(spi0_hw, 17, 19, 20, 18);
-            storage = storage_init(&sd, sd_buff, 600);
-            sd_init = true;
-
-//            for(int i = 0; i < 550; i++){
-//                storage_store_byte(&storage, temp[i]);
-//            }
-        }else if(sd_init && !sio_get(1)) {
-            storage_task(&storage);
-        }*/
 
         while(!usb_host_hid_report_queue_is_empty()) {
             hid_report = usb_host_hid_report_dequeue();
@@ -136,11 +91,6 @@ int main()
         if (ft260_get_output_report(&ft260, &output_report)) {
            usb_host_hid_send_output_report(&output_report);
         }
-
-//		sio_put(LED,1);
-//        wait_ms(100);   //delay(150);
-//        sio_put(LED,0);
-//        wait_ms(100);   //delay(150);
 	}
 
 	return 0;

@@ -11,6 +11,7 @@
 
 // Keymaps
 extern uint8_t usb_hid_keycode_to_ascii_qwerty[104][3];
+extern uint8_t usb_hid_keycode_to_ascii_azerty[104][3];
 
 #define USB_HID_KEY_CAPS_LOCK   0x39
 
@@ -77,16 +78,44 @@ typedef enum {
     usb_hid_report_type_feature,
 } usb_hid_report_type_t;
 
+typedef enum {
+    hid_keymap_azerty,
+    hid_keymap_qwerty,
+} hid_keymap_t;
+
 typedef struct {
     usb_hid_boot_keyboard_input_report_t prev_report;
     usb_hid_modifier_keys_bits_t pressed_modifiers;
     uint8_t pressed_keys[6];
     bool capslock_enabled;
+    hid_keymap_t selected_keymap;
 } usb_hid_keyboard_report_parser_t;
+
+
+/**
+ * Get the selected keymap of the given parser
+ *
+ * @param parser
+ * @return
+ */
+static inline hid_keymap_t hid_get_selected_keymap(usb_hid_keyboard_report_parser_t *parser) {
+    return parser->selected_keymap;
+}
+
+/**
+ * Set the keymap of the given parser
+ *
+ * @param parser
+ * @param keymap
+ */
+static inline void hid_report_parser_set_keymap(usb_hid_keyboard_report_parser_t *parser, hid_keymap_t keymap) {
+    parser->selected_keymap = keymap;
+}
 
 // Function prototypes
 bool usb_hid_report_cmp(usb_hid_boot_keyboard_input_report_t *report1, usb_hid_boot_keyboard_input_report_t *report2);
-usb_hid_keyboard_report_parser_t hid_report_parser_init(void);
+void hid_report_parser_init(usb_hid_keyboard_report_parser_t *parser, hid_keymap_t keymap);
+void hid_report_parser_set_keymap(usb_hid_keyboard_report_parser_t *parser, hid_keymap_t keymap);
 int hid_report_parse(usb_hid_keyboard_report_parser_t *parser, usb_hid_boot_keyboard_input_report_t *report, uint8_t *pressed_keys);
 
 #endif //KEYLOGGER_HID_H

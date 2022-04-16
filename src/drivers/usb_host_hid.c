@@ -221,18 +221,13 @@ bool usb_hid_report_cmp(usb_hid_boot_keyboard_input_report_t *report1, usb_hid_b
  *
  * @return
  */
-usb_hid_keyboard_report_parser_t hid_report_parser_init(void) {
-    usb_hid_keyboard_report_parser_t parser;
-
-    // TODO: Add option to select a keymap
-
+void hid_report_parser_init(usb_hid_keyboard_report_parser_t *parser, hid_keymap_t keymap) {
     // Initialise struct members
-    parser.prev_report = (usb_hid_boot_keyboard_input_report_t){0, 0, 0, 0, 0, 0, 0, 0};
-    parser.pressed_modifiers = (usb_hid_modifier_keys_bits_t){0, 0, 0, 0, 0, 0, 0, 0};
-    memset(parser.pressed_keys, 0, 6);
-    parser.capslock_enabled = false;
-
-    return parser;
+    parser->prev_report = (usb_hid_boot_keyboard_input_report_t){0, 0, 0, 0, 0, 0, 0, 0};
+    parser->pressed_modifiers = (usb_hid_modifier_keys_bits_t){0, 0, 0, 0, 0, 0, 0, 0};
+    memset(parser->pressed_keys, 0, 6);
+    parser->capslock_enabled = false;
+    parser->selected_keymap = keymap;
 }
 
 /**
@@ -245,8 +240,19 @@ usb_hid_keyboard_report_parser_t hid_report_parser_init(void) {
  */
 int hid_report_parse(usb_hid_keyboard_report_parser_t *parser, usb_hid_boot_keyboard_input_report_t *report, uint8_t *pressed_keys) {
     bool key_in_prev_report = false;
+    uint8_t (*keymap)[104][3];
     int pressed_keys_count = 0;
     int layer = 0; // 0 = default, 1 = shift, 2 right alt
+
+    // Keymap selection
+    switch(parser->selected_keymap) {
+        case hid_keymap_azerty:
+            keymap = &usb_hid_keycode_to_ascii_azerty;
+            break;
+        case hid_keymap_qwerty:
+            keymap = &usb_hid_keycode_to_ascii_qwerty;
+            break;
+    }
 
     // Modifier keys
     parser->pressed_modifiers = report->modifier_keys_bits;
@@ -269,7 +275,7 @@ int hid_report_parse(usb_hid_keyboard_report_parser_t *parser, usb_hid_boot_keyb
         }
         if (!key_in_prev_report) {
             // New key pressed, parse
-            uint8_t ascii_code = usb_hid_keycode_to_ascii_qwerty[report->keycodes[i]][layer];
+            uint8_t ascii_code = (*keymap)[report->keycodes[i]][layer];
             if (ascii_code != 0) {
                 // Key with an ascii code relationship, add to the pressed keys array
                 pressed_keys[pressed_keys_count++] = ascii_code;

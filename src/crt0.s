@@ -1,3 +1,4 @@
+// Modified from: https://github.com/raspberrypi/pico-sdk/blob/2062372d203b372849d573f252cf7c6dc2800c0a/src/rp2_common/pico_standard_link/crt0.S
 .syntax unified
 .cpu cortex-m0plus
 .thumb
@@ -127,7 +128,7 @@ unhandled_user_irq_num_in_r0:
 .thumb_func
 _reset_handler:
     adr r4, data_cpy_table
-    // assume there is at least one entry
+    // Assume there is at least one entry
 1:
     ldmia r4!, {r1-r3}
     cmp r1, #0
@@ -150,18 +151,16 @@ _entry:
     // Call the main function (C)
 	ldr r1, =main
 	blx r1
-//	ldr r1, =exit
-//    blx r1
+	ldr r1, =_exit
+    blx r1
 
-//.weak _exit
-//.type _exit,%function
-//.thumb_func
-//_exit:
-//1: // separate label because _exit can be moved out of branch range
- //   bkpt #0
- //   b 1b
-
-
+.weak _exit
+.type _exit,%function
+.thumb_func
+_exit:
+1: // Separate label because _exit can be moved out of branch range
+   bkpt #0
+   b 1b
 
 // Returns the exception number in r0. See table 2-5 in Cortex M0+ Device Generic User Guide
 .global __get_current_exception
@@ -170,8 +169,6 @@ __get_current_exception:
     mrs  r0, ipsr   // Read the interupt program status register into r0
     uxtb r0, r0     // Zero r0 except for the last byte
     bx   lr         // Return
-
-
 
 data_cpy_loop:
     ldm r1!, {r0}
@@ -196,13 +193,13 @@ data_cpy_table:
 .word __scratch_y_start__
 .word __scratch_y_end__
 
-.word 0 // null terminator
+.word 0 // Null terminator
 
 // ----------------------------------------------------------------------------
 // Stack/heap dummies to set size
 
 .section .stack
-// align to allow for memory protection (although this alignment is pretty much ignored by linker script)
+// Align to allow for memory protection (although this alignment is pretty much ignored by linker script)
 .align 5
     .equ StackSize, 0x800
 .space StackSize

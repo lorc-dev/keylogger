@@ -1,3 +1,4 @@
+/* Modified from: https://github.com/raspberrypi/pico-sdk/blob/afc10f3599c27147a6f34781b7102d86f58aa5f6/src/rp2_common/pico_standard_link/memmap_default.ld */
 /* Based on GCC ARM embedded samples.
    Defines the following symbols for use by code:
     __exidx_start
@@ -29,19 +30,13 @@ MEMORY
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }
 
-/*ENTRY(_entry_point)*/
-
 SECTIONS
 {
-    /* Second stage bootloader is prepended to the image. It must be 256 bytes big
-       and checksummed. It is usually built by the boot_stage2 target
-       in the Raspberry Pi Pico SDK
-    */
-
     .flash_begin : {
         __flash_binary_start = .;
     } > FLASH
 
+    /* Second stage bootloader */
     .boot2 : {
         __boot2_start__ = .;
         KEEP (*(.boot2))
@@ -49,20 +44,11 @@ SECTIONS
     } > FLASH
 
     ASSERT(__boot2_end__ - __boot2_start__ == 256,
-        "ERROR: Pico second stage bootloader must be 256 bytes in size")
-
-    /* The second stage will always enter the image at the start of .text.
-       The debugger will use the ELF entry point, which is the _entry_point
-       symbol if present, otherwise defaults to start of .text.
-       This can be used to transfer control back to the bootrom on debugger
-       launches only, to perform proper flash setup.
-    */
+        "ERROR: Second stage bootloader must be 256 bytes in size")
 
     .text : {
         __logical_binary_start = .;
         KEEP (*(.vectors))
-        KEEP (*(.binary_info_header))
-        __binary_info_header_end = .;
         KEEP (*(.reset))
         /* TODO revisit this now memset/memcpy/float in ROM */
         /* bit of a hack right now to exclude all floating point and time critical (e.g. memset, memcpy) code from
@@ -105,17 +91,6 @@ SECTIONS
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
     } > FLASH
     __exidx_end = .;
-
-    /* Machine inspectable binary information */
-    . = ALIGN(4);
-    __binary_info_start = .;
-    .binary_info :
-    {
-        KEEP(*(.binary_info.keep.*))
-        *(.binary_info.*)
-    } > FLASH
-    __binary_info_end = .;
-    . = ALIGN(4);
 
     /* End of .text-like segments */
     __etext = .;
@@ -245,8 +220,5 @@ SECTIONS
 
     /* Check if data + heap + stackf exceeds RAM limit */
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed")
-
-    ASSERT( __binary_info_header_end - __logical_binary_start <= 256, "Binary info must be in first 256 bytes of the binary")
-    /* todo assert on extra code */
 }
 

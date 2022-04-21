@@ -8,40 +8,41 @@
 #include "../include/hardware/i2c.h"
 
 
-ssd1306_t ssd1306_init(i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height, uint8_t * buffer) {
-    ssd1306_t ssd1306 = {i2c, address, width, height, buffer};
+void ssd1306_init(ssd1306_t *ssd1306, i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height) {
+    ssd1306->i2c = i2c;
+    ssd1306->address = address;
+    ssd1306->width = width;
+    ssd1306->height = height;
 
     // Turn the display off
-    ssd1306_display_on(&ssd1306, false);
+    ssd1306_display_on(ssd1306, false);
 
     // Enable charge pump
     uint8_t cmd_list[] = {SSD1306_COMMAND_CHARGE_PUMP_SETTING, 0x14};
-    ssd1306_send_commands(&ssd1306, cmd_list, 2);
+    ssd1306_send_commands(ssd1306, cmd_list, 2);
 
     // Set horizontal addressing mode
-    ssd1306_set_memory_addressing_mode(&ssd1306, 0x0);
+    ssd1306_set_memory_addressing_mode(ssd1306, 0x0);
 
     // Column address 127 mapped to SEG0
-    ssd1306_set_segment_remap(&ssd1306, true);
+    ssd1306_set_segment_remap(ssd1306, true);
 
     // Flip vertically
-    ssd1306_set_com_output_scan_dir(&ssd1306, true);
+    ssd1306_set_com_output_scan_dir(ssd1306, true);
 
     // Set correct OLED panel loyout
-    ssd1306_set_com_pins(&ssd1306);
+    ssd1306_set_com_pins(ssd1306);
 
     // Set the duration of the pre-charge period
-    ssd1306_set_precharge_period(&ssd1306,0x1, 0xF);
+    ssd1306_set_precharge_period(ssd1306,0x1, 0xF);
 
     // Set Vcomh deselect level?
 
     // Deactivate scrolling
-    ssd1306_activate_scrolling(&ssd1306, false);
+    ssd1306_activate_scrolling(ssd1306, false);
 
     // Turn the display on
-    ssd1306_display_on(&ssd1306, true);
-
-    return ssd1306;
+    ssd1306_display_on(ssd1306, true);
 }
 
 /**

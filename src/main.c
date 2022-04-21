@@ -39,8 +39,8 @@ int main()
     gpio_set_function(7, GPIO_FUNC_I2C);
 
     // SSD1306 display
-    uint8_t buffer[512];
-    ssd1306_t ssd1306 = ssd1306_init(i2c1_hw, 0x3C, 128,32, buffer);
+    ssd1306_t ssd1306;
+    ssd1306_init(&ssd1306, i2c1_hw, 0x3C, 128,32);
 
     // Graphics
     graphics_display_t display = graphics_init(&ssd1306);

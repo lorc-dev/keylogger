@@ -12,10 +12,10 @@
 // See SSD1306 datasheet
 typedef struct {
     i2c_hw_t *i2c;
-    const uint8_t address;
-    const uint8_t width;
-    const uint8_t height;
-    uint8_t *buffer; // 128 * 64 / 8
+    uint8_t address;
+    uint8_t width;
+    uint8_t height;
+    uint8_t buffer[1024]; // 128 * 64 / 8
 }ssd1306_t;
 
 // Fundamental Commands (See Table 9-1-1)
@@ -40,7 +40,7 @@ typedef struct {
 #define SSD1306_COMMAND_CHARGE_PUMP_SETTING 0x8D
 
 // Function prototypes
-ssd1306_t ssd1306_init(i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height, uint8_t * buffer);
+void ssd1306_init(ssd1306_t *ssd1306, i2c_hw_t *i2c, uint8_t address, uint8_t width, uint8_t height);
 static inline void ssd1306_send_command(ssd1306_t *ssd1306, uint8_t command);
 static inline void ssd1306_send_commands(ssd1306_t *ssd1306, uint8_t *command, uint32_t len);
 void ssd1306_display_on(ssd1306_t *ssd1306, bool on);

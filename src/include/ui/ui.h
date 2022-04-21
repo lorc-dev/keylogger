@@ -38,6 +38,8 @@ typedef enum {
 typedef struct {
     graphics_display_t *display;
     ui_menu_item_t selected_menu_item;
+    uint8_t left_button_pin;
+    uint8_t right_button_pin;
 
     // Buttons
     struct {

@@ -10,6 +10,7 @@
 #include "../include/lib/graphics/graphics.h"
 #include "../include/hardware/gpio.h"
 #include "../include/hardware/sio.h"
+#include "../include/hardware/timer.h"
 
 #include "../include/storage/storage.h"
 #include "../include/hardware/usb.h"
@@ -32,6 +33,8 @@ void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uin
 
     ui->display = display;
     ui->selected_menu_item = 0;
+    ui->left_button_pin = left_button_pin;
+    ui->right_button_pin = right_button_pin;
 
     // Devices
     ui->devices.storage = storage;
@@ -65,14 +68,20 @@ void ui_init(ui_t *ui, graphics_display_t *display, uint8_t left_button_pin, uin
  * Left button press interrupt handler
  */
 static void ui_on_left_button_handler(void) {
-    active_ui->buttons.button_left_pressed = true;
+    wait_us(500);   // TODO: Implement a better way to debounce the buttons
+    if(!sio_get(active_ui->left_button_pin)) {
+        active_ui->buttons.button_left_pressed = true;
+    }
 }
 
 /**
  * Right button press interrupt handler
  */
 static void ui_on_right_button_handler(void) {
-    active_ui->buttons.button_right_pressed = true;
+    wait_us(500);   // TODO: Implement a better way to debounce the buttons
+    if(!sio_get(active_ui->right_button_pin)) {
+        active_ui->buttons.button_right_pressed = true;
+    }
 }
 
 /**

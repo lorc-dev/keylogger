@@ -55,7 +55,7 @@ void clock_configure(enum clock_index clk_index, uint32_t src, uint32_t auxsrc, 
         // Delay for 3 cycles of the target clock (see phase register)
         // This only works if the system clock is already configured
         for (uint32_t i = 0; i < integer_division(configured_freq[clk_sys], configured_freq[clk_index]) * 3; i++)
-            asm volatile ("nop");   // Nop instruction execution time is exactly 1 sys clock cycle
+            __asm__ volatile ("nop");   // Nop instruction execution time is exactly 1 sys clock cycle
     }
 
     // Set the aux mux

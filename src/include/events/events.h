@@ -19,6 +19,7 @@ typedef enum {
     event_storage_initialized,
     event_storage_block_written,
     event_sd_card_disconnected,
+    event_sd_card_released,
 } event_type_t;
 
 typedef struct {

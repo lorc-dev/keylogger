@@ -20,6 +20,7 @@ typedef enum {
     sd_status_disconnected,
     sd_status_connected,
     sd_status_initialized,
+    sd_status_released,
 } sd_status_t;
 
 typedef struct {
@@ -71,14 +72,24 @@ typedef struct {
  * @param sd
  * @return
  */
-static inline bool sd_spi_card_connected(sd_spi_t *sd) {
-    return sd->status == sd_status_initialized;
-}
+//static inline bool sd_spi_card_connected(sd_spi_t *sd) {
+//    return sd->status == sd_status_initialized;
+//}
 
+/**
+ * Returns the sd card status
+ *
+ * @param sd
+ * @return
+ */
+static inline sd_status_t sd_spi_get_status(sd_spi_t *sd) {
+    return sd->status;
+}
 
 // Function prototypes
 void sd_spi_init(sd_spi_t *sd, spi_hw_t * spi_hw, uint8_t cs_pin, uint8_t mosi_pin, uint8_t miso_pin, uint8_t clk_pin, uint8_t detect_pin);
 void sd_spi_disconnect_handler(void);
+void sd_spi_release(sd_spi_t *sd);
 void sd_spi_task(sd_spi_t *sd);
 bool sd_spi_init_card(sd_spi_t *sd);
 static uint8_t sd_spi_send_command(sd_spi_t *sd, uint8_t cmd, uint32_t arg);

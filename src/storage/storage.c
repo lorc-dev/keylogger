@@ -38,7 +38,7 @@ void storage_init(storage_t *storage, sd_spi_t * sd_card) {
     storage->sd_card = sd_card;
     storage->unsaved_block_buffer_index = 0;
     storage->device_initialized = false;
-    if (sd_spi_card_connected(sd_card)) {
+    if (sd_spi_get_status(sd_card) == sd_status_initialized) {
         storage_device_init(storage);
     }
 }
@@ -162,17 +162,37 @@ bool storage_store_byte(storage_t *storage, uint8_t byte) {
 }
 
 /**
+ * Releases the given storage instance.
+ * @note If the storage device is still connected when the storage task runs, it will automatically be reinitialized
+ *
+ * @param storage
+ */
+void storage_release(storage_t *storage) {
+    if (storage->device_initialized) {
+        // Write the block and update block 1 on the storage device
+        storage->last_used_block++;
+        storage_write_block(storage, storage->unsaved_block_buffer, storage->last_used_block);
+        storage_update_block_1(storage);
+        event_add(event_storage_block_written, NULL);
+        storage->unsaved_block_buffer_index = 0;
+    }
+
+    storage->device_initialized = false;
+    sd_spi_release(storage->sd_card);
+}
+
+/**
  * Storage task, should be called regularly
  *
  * @param storage
  */
 void storage_task(storage_t *storage) {
     // Initialize the storage device if this wasn't the case already
-    if (storage->device_initialized == false && sd_spi_card_connected(storage->sd_card)){
+    if (storage->device_initialized == false && sd_spi_get_status(storage->sd_card) == sd_status_initialized){
         storage_device_init(storage);
     }
 
-    if(!sd_spi_card_connected(storage->sd_card)){
+    if(sd_spi_get_status(storage->sd_card) != sd_status_initialized){
         storage->device_initialized = false;
     }
 

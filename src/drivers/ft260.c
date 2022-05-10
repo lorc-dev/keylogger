@@ -325,6 +325,7 @@ static void ft260_reset(ft260_t *ft260) {
     ft260->power_state = ft260_power_state_on;
 
     // Input register
+
     memset(ft260->registers.input.bytes, 0, USB_HID_BOOT_KEYBOARD_INPUT_REPORT_SIZE);
 
     // Command register

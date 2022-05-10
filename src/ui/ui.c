@@ -404,16 +404,25 @@ static void ui_menu_release_sd_card(ui_t *ui, bool action_key_pressed) {
 
     text_pos.x = 0;
     text_pos.y = GRAPHICS_FONT_CHAR_HEIGHT + 2;
-    if (!storage_get_device_initialized(ui->devices.storage)) {
-        graphics_draw_text(ui->display, text_pos, "Released");
-    }
-    else {
-        if (action_key_pressed) {
-            // TODO: implement release sd card functionality
-        }
-        graphics_draw_text(ui->display, text_pos, "Press OK");
-    }
 
+    switch (sd_spi_get_status(ui->devices.storage->sd_card)){
+        case sd_status_disconnected:
+            graphics_draw_text(ui->display, text_pos, "Disconnected");
+            break;
+        case sd_status_connected:
+            break;
+        case sd_status_initialized:
+            if (action_key_pressed) {
+                storage_release(ui->devices.storage);
+            }
+            else {
+                graphics_draw_text(ui->display, text_pos, "Press OK");
+            }
+            break;
+        case sd_status_released:
+            graphics_draw_text(ui->display, text_pos, "Remove card");
+            break;
+    }
 }
 
 /**

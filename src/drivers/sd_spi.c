@@ -77,6 +77,16 @@ void sd_spi_disconnect_handler(void) {
 }
 
 /**
+ * Release the sd card so it can safely be disconnected
+ *
+ * @param sd
+ */
+void sd_spi_release(sd_spi_t *sd) {
+    sd->status = sd_status_released;
+    event_add(event_sd_card_released, NULL);
+}
+
+/**
  * SD task routine
  *
  * @param sd

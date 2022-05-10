@@ -61,6 +61,9 @@ void event_task(void) {
             case event_sd_card_disconnected:
                 ui_data_changed_event_handler(ui_data_source_storage);
                 break;
+            case event_sd_card_released:
+                ui_data_changed_event_handler(ui_data_source_storage);
+                break;
             case event_storage_block_written:
                 ui_data_changed_event_handler(ui_data_source_storage);
                 break;

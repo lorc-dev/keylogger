@@ -56,6 +56,7 @@ static bool storage_verify_magic_bytes(const uint8_t *buffer);
 static void storage_update_block_1(storage_t *storage);
 static void storage_format_device(storage_t *storage);
 bool storage_store_byte(storage_t *storage, uint8_t byte);
+void storage_release(storage_t *storage);
 void storage_task(storage_t *storage);
 
 #endif //KEYLOGGER_STORAGE_H

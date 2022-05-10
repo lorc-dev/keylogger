@@ -2,7 +2,7 @@
 AS = arm-none-eabi-as
 ASFLAGS := -g
 CC := arm-none-eabi-gcc
-CCFLAGS := -mthumb -mcpu=cortex-m0plus -nostdlib -ggdb -ffreestanding
+CCFLAGS := -mthumb -mcpu=cortex-m0plus -nostdlib -ggdb -ffreestanding -std=c11
 CCOBJFLAGS := $(CCFLAGS) -c
 LD = arm-none-eabi-ld
 LDFLAGS =  --verbose  -T

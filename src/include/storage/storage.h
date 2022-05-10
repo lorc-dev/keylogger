@@ -50,6 +50,7 @@ static inline bool storage_get_device_initialized(storage_t *storage) {
 // Function prototypes
 void storage_init(storage_t *storage, sd_spi_t * sd_card);
 void storage_device_init(storage_t *storage);
+void storage_format(storage_t *storage);
 static inline void storage_write_block(storage_t *storage, uint8_t * buffer, uint32_t block);
 static inline void storage_read_block(storage_t *storage, uint8_t * buffer, uint32_t block);
 static bool storage_verify_magic_bytes(const uint8_t *buffer);

@@ -69,6 +69,19 @@ void storage_device_init(storage_t *storage) {
 }
 
 /**
+ * Format the storage device
+ *
+ * @param storage
+ */
+void storage_format(storage_t *storage) {
+    storage->device_initialized = false;
+    storage_format_device(storage);
+    storage->last_used_block = 1;
+    storage->device_initialized = true;
+    event_add(event_storage_initialized, NULL);
+}
+
+/**
  * Write a 512 byte block to the storage device
  * Wrapper function for sd_spi_write_block
  *
@@ -139,7 +152,7 @@ static void storage_format_device(storage_t *storage) {
     i += 4;
 
     // Zero the rest of the block
-    memset(block_1, 0, 512);
+    memset(block_1 + i, 0, 512 - i);
 
     // Write the block to the device
     storage_write_block(storage, block_1, 1);

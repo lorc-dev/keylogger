@@ -442,7 +442,7 @@ static void ui_menu_format_sd_card(ui_t *ui, bool action_key_pressed) {
     text_pos.y = GRAPHICS_FONT_CHAR_HEIGHT + 2;
     if (action_key_pressed) {
         graphics_draw_text(ui->display, text_pos, "Formatting...");
-        // TODO: implement the format sd card action
+        storage_format(ui->devices.storage);
     }
     else if (storage_get_device_initialized(ui->devices.storage)) {
         graphics_draw_text(ui->display, text_pos, "Press OK");

@@ -17,8 +17,7 @@
 #include "include/ui/ui.h"
 
 
-int main()
-{
+int main(void) {
     runtime_init(); // TODO: Call runtime_init() from crt0.s before main ?
 
 	gpio_enable();
@@ -72,24 +71,59 @@ int main()
     ui_menu_loading_screen(&ui);
     wait_ms(500);
 
-	while(1) {
+    // Words per minute
+    uint8_t wpm = 0;
+    uint8_t char_count = 0;
+    uint64_t time_interval_start = get_time();
+    uint64_t time_interval_now = time_interval_start;
+
+    // Loop forever
+	while (1) {
         event_task();
         graphics_task(&display);
         sd_spi_task(&sd);
         storage_task(&storage);
         ui_task(&ui);
 
-        while(!usb_host_hid_report_queue_is_empty()) {
+        // Read all HID input reports from the usb host report queue
+        while (!usb_host_hid_report_queue_is_empty()) {
+            // Get the report from the queue
             hid_report = usb_host_hid_report_dequeue();
+
+            // Send the report to the host (via ft260 usb <-> hid bridge)
             ft260_send_input_report(&ft260, &hid_report);
+
+            // Parse the report
             int chars = hid_report_parse(&hid_parser, &hid_report, pressed_keys);
-            for (int i = 0; i < chars; i++){
+            // Loop through all the pressed keys
+            for (int i = 0; i < chars; i++) {
+                // Store the character
                 storage_store_byte(&storage, pressed_keys[i]);
+                // Update the UI with the new data
                 ui_menu_live_output_set_data(&ui, pressed_keys[i]);
             }
+
+            // Update the char count var to use in the WPM calculation
+            char_count += chars;
         }
+
+        // Send an output report to the keyboard if a new one is available
         if (ft260_get_output_report(&ft260, &output_report)) {
            usb_host_hid_send_output_report(&output_report);
+        }
+
+        // Words per minute
+        time_interval_now = get_time();
+        if (time_interval_now - time_interval_start >= 5000000) {  // Check if 15 seconds have passed
+            // Calculate the new WPM value
+            wpm = (uint8_t)(char_count * 12 / 5);        // 5 chars/word and 4 * 15 s / 60 s (min)
+
+            // Update the UI with the new data
+            ui_menu_user_stats_set_data(&ui, wpm);
+
+            // Reset
+            time_interval_start = time_interval_now;
+            char_count = 0;
         }
 	}
 

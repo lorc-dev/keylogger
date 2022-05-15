@@ -107,10 +107,8 @@ typedef struct {
  */
 static inline void ui_menu_user_stats_set_data(ui_t *ui, uint8_t wpm) {
     // Words per minute
-    if (wpm == ui->menu_items.user_stats.wpm) {
-        ui->menu_data_changed[ui_menu_item_user_stats] = true;
-        ui->menu_items.user_stats.wpm = wpm;
-    }
+    ui->menu_data_changed[ui_menu_item_user_stats] = true;
+    ui->menu_items.user_stats.wpm = wpm;
 }
 
 /**
